@@ -1,0 +1,10 @@
+bin/
+obj/
+publish-small/
+publish-portable/
+dist/
+.vs/
+.vscode/
+*.user
+*.suo
+*.log
