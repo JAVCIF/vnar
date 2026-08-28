@@ -1,0 +1,142 @@
+<Window x:Class="LocaleGameHub.SettingsWindow" Icon="Resources/VNAR.ico"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ajustes · VNAR" Height="770" Width="850" MinHeight="680" MinWidth="740"
+        Background="{StaticResource BgBrush}" WindowStartupLocation="CenterOwner">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource BgBrush}">
+        <Grid Background="{StaticResource BgBrush}" Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="Locale Emulator" FontSize="26" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                <TextBlock Text="El Hub usa los perfiles reales de LEConfig.xml para reproducir el mismo comportamiento de Run in Japanese."
+                           Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <Border Grid.Row="1" x:Name="FirstRunPanel" Visibility="Collapsed" Background="{StaticResource AccentDimBrush}"
+                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="9" Padding="14" Margin="0,18,0,0">
+                <StackPanel>
+                    <TextBlock Text="Primer arranque" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="Antes de jugar, indica dónde tienes LEProc.exe o deja que VNAR descargue y prepare Locale Emulator por ti."
+                               Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                    CornerRadius="10" Padding="16" Margin="0,18,0,0">
+                <StackPanel>
+                    <TextBlock Text="LEProc.exe" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,7"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="LePathBox" MinHeight="36" VerticalContentAlignment="Center"/>
+                        <Button Grid.Column="1" x:Name="BrowseButton" Style="{StaticResource SecondaryButton}" Content="Examinar…"
+                                Click="BrowseLe_Click" Margin="10,0,0,0"/>
+                        <Button Grid.Column="2" x:Name="DownloadButton" Style="{StaticResource PrimaryButton}" Content="↓ Descargar / configurar LE"
+                                Click="DownloadLe_Click" Margin="8,0,0,0"/>
+                    </Grid>
+                    <TextBlock Text="La descarga usa la última release publicada en github.com/xupefei/Locale-Emulator y la descomprime en la carpeta que elijas."
+                               Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,9,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="3" Margin="0,18,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,8,0">
+                    <TextBlock Text="Perfil japonés normal" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6"/>
+                    <ComboBox x:Name="NormalProfileCombo" MinHeight="36" DisplayMemberPath="Display" SelectionChanged="ProfileCombo_SelectionChanged"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                    <TextBlock Text="Perfil japonés administrador" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6"/>
+                    <ComboBox x:Name="AdminProfileCombo" MinHeight="36" DisplayMemberPath="Display" SelectionChanged="ProfileCombo_SelectionChanged"/>
+                </StackPanel>
+            </Grid>
+
+            <Border Grid.Row="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                    CornerRadius="10" Padding="16" Margin="0,18,0,0">
+                <StackPanel>
+                    <TextBlock Text="Búsqueda de portadas" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentHoverBrush}"/>
+                    <TextBlock Text="VNDB funciona sin configuración. Si quieres ver resultados de Google Images dentro del Hub, puedes añadir una API key opcional de SerpApi."
+                               Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <PasswordBox x:Name="SerpApiKeyBox" MinHeight="36" Padding="10,7" Background="{StaticResource InputBrush}"
+                                     Foreground="{StaticResource TextBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"/>
+                        <Button Grid.Column="1" x:Name="OpenSerpApiButton" Style="{StaticResource SecondaryButton}"
+                                Content="SerpApi ↗" Click="OpenSerpApi_Click" Margin="10,0,0,0"/>
+                    </Grid>
+                    <TextBlock Text="Opcional. La clave se guarda localmente en settings.json. Si la dejas vacía, el buscador interno seguirá usando VNDB y el drag desde el navegador."
+                               Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="5" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                    CornerRadius="10" Padding="16" Margin="0,18,0,0">
+                <StackPanel>
+                    <TextBlock Text="Interfaz" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentHoverBrush}"/>
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,8,0">
+                            <TextBlock Text="Idioma" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="SpanishLanguageButton" Style="{StaticResource LibraryTabButton}" Content="Español"
+                                        Click="SpanishLanguage_Click" Margin="0,0,4,0"/>
+                                <Button Grid.Column="1" x:Name="EnglishLanguageButton" Style="{StaticResource LibraryTabButton}" Content="English"
+                                        Click="EnglishLanguage_Click" Margin="4,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBlock Text="Juegos por página" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <ComboBox x:Name="PageSizeCombo" MinHeight="36"/>
+                            <TextBlock Text="Puedes elegir entre 10 y 50 juegos por página." Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,7,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="6" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                    CornerRadius="10" Padding="15" Margin="0,18,0,0">
+                <StackPanel>
+                    <TextBlock Text="Estado" FontWeight="SemiBold" FontSize="15" Foreground="{StaticResource TextBrush}" Margin="0,0,0,7"/>
+                    <TextBlock x:Name="StatusText" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button x:Name="ReloadButton" Style="{StaticResource SecondaryButton}" Content="↻ Leer perfiles de LEConfig.xml"
+                                Click="ReloadProfiles_Click" Margin="0,0,8,0"/>
+                        <Button x:Name="OpenRepoButton" Style="{StaticResource SecondaryButton}" Content="GitHub de Locale Emulator ↗"
+                                Click="OpenRepo_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button x:Name="CancelButton" Style="{StaticResource SecondaryButton}" Content="Cancelar" Click="Cancel_Click" Margin="0,0,8,0"/>
+                <Button x:Name="SaveButton" Style="{StaticResource PrimaryButton}" Content="Guardar" Click="Save_Click"/>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Window>

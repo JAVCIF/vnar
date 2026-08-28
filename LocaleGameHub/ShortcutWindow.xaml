@@ -1,0 +1,102 @@
+<Window x:Class="LocaleGameHub.ShortcutWindow" Icon="Resources/VNAR.ico"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Crear acceso directo · VNAR" Height="650" Width="760" MinHeight="560" MinWidth="680"
+        Background="{StaticResource BgBrush}" WindowStartupLocation="CenterOwner">
+    <Grid Margin="22" Background="{StaticResource BgBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Crear acceso directo" FontSize="26" FontWeight="Bold"/>
+            <TextBlock Text="El acceso directo abre el juego mediante VNAR y conserva la configuración actual de Locale Emulator, administrador y argumentos."
+                       Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                CornerRadius="10" Padding="15" Margin="0,18,0,0">
+            <StackPanel>
+                <TextBlock Text="Nombre del acceso directo" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <TextBox x:Name="NameBox"/>
+
+                <TextBlock Text="Carpeta de destino" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="DestinationBox" IsReadOnly="True"/>
+                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Elegir…" Click="BrowseDestination_Click" Margin="8,0,0,0"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="2" Margin="0,18,0,8">
+            <TextBlock Text="Icono" FontSize="17" FontWeight="Bold" Foreground="{StaticResource AccentHoverBrush}"/>
+            <TextBlock Text="VNAR busca iconos en los ejecutables de la misma carpeta del juego. Si ninguno sirve, puedes usar el icono genérico de VNAR."
+                       Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                CornerRadius="10" Padding="8">
+            <ListBox x:Name="IconsList" Background="Transparent" BorderThickness="0" SelectionChanged="IconsList_SelectionChanged">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Margin" Value="5"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="ItemBorder" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}"
+                                            BorderThickness="1" CornerRadius="9" Padding="10" Width="150" Height="120">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource AccentDimBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource WarningBrush}"/>
+                                            <Setter TargetName="ItemBorder" Property="BorderThickness" Value="2"/>
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="#1C2C47"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel HorizontalAlignment="Center">
+                            <Image Source="{Binding Preview}" Width="52" Height="52" Stretch="Uniform"/>
+                            <TextBlock Text="{Binding DisplayName}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                       MaxWidth="126" MaxHeight="38" Margin="0,7,0,0"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <Grid Grid.Row="4" Margin="0,18,0,0">
+            <TextBlock x:Name="StatusText" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,240,0"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource SecondaryButton}" Content="Cancelar" Click="Cancel_Click" Margin="0,0,8,0"/>
+                <Button Style="{StaticResource PrimaryButton}" Content="Crear" Click="Create_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

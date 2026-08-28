@@ -1,0 +1,104 @@
+<Window x:Class="LocaleGameHub.GameEditorWindow" Icon="Resources/VNAR.ico"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Configurar juego · VNAR" Height="700" Width="990" MinHeight="620" MinWidth="880"
+        Background="{StaticResource BgBrush}" WindowStartupLocation="CenterOwner">
+    <Grid Background="{StaticResource BgBrush}" Margin="22">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="310"/>
+            <ColumnDefinition Width="24"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Column="0">
+            <TextBlock Text="Portada" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextBrush}" Margin="0,0,0,10"/>
+            <Border Height="430" Background="#080C12" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                    CornerRadius="10" ClipToBounds="True" AllowDrop="True" Drop="Cover_Drop" DragOver="Cover_DragOver">
+                <Grid>
+                    <Image x:Name="CoverPreview" Stretch="UniformToFill"/>
+                    <Border VerticalAlignment="Bottom" Background="#D00A0F17" Padding="10">
+                        <TextBlock Text="Arrastra aquí una portada" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                    </Border>
+                </Grid>
+            </Border>
+            <UniformGrid Columns="3" Margin="0,10,0,0">
+                <Button Style="{StaticResource SecondaryButton}" Content="Elegir imagen" Click="ChooseCover_Click" Margin="0,0,4,0"/>
+                <Button Style="{StaticResource SecondaryButton}" Content="Editar portada…" Click="EditCover_Click" Margin="4,0,4,0"/>
+                <Button Style="{StaticResource PrimaryButton}" Content="Buscar portada…" Click="CoverSearch_Click" Margin="4,0,0,0"/>
+            </UniformGrid>
+            <TextBlock x:Name="CoverStatus" Text="También puedes arrastrar una imagen desde una carpeta o directamente desde el navegador."
+                       Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" Background="{StaticResource BgBrush}">
+            <StackPanel>
+                <TextBlock Text="Juego" FontSize="25" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+
+                <TextBlock Text="Nombre" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,18,0,6"/>
+                <TextBox x:Name="NameBox"/>
+
+                <TextBlock Text="Ejecutable" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,14,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="ExeBox" IsReadOnly="True"/>
+                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Cambiar…" Click="ChangeExe_Click" Margin="8,0,0,0"/>
+                </Grid>
+
+                <TextBlock Text="Argumentos opcionales" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,14,0,6"/>
+                <TextBox x:Name="ArgumentsBox"/>
+
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                        CornerRadius="10" Padding="15" Margin="0,18,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Locale Emulator" Foreground="{StaticResource AccentHoverBrush}" FontWeight="Bold" FontSize="16"/>
+                        <CheckBox x:Name="AdminCheck" Content="Ejecutar con el perfil japonés de administrador"
+                                  Foreground="{StaticResource TextBrush}" Margin="0,12,0,0"/>
+                        <TextBlock Text="Desmarcado usa Run in Japanese; marcado usa Run in Japanese (Admin)."
+                                   Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                        CornerRadius="10" Padding="15" Margin="0,14,0,0">
+                    <StackPanel>
+                        <TextBlock Text="VNDB" Foreground="{StaticResource AccentHoverBrush}" FontWeight="Bold" FontSize="16"/>
+                        <TextBlock Text="Pega el código de la novela (por ejemplo v17 o simplemente 17) para descargar su portada."
+                                   Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="VndbBox"/>
+                            <Button Grid.Column="1" x:Name="VndbButton" Style="{StaticResource PrimaryButton}" Content="Traer de VNDB" Click="Vndb_Click" Margin="8,0,0,0"/>
+                        </Grid>
+                        <TextBlock x:Name="VndbStatus" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
+                        CornerRadius="9" Padding="12" Margin="0,14,0,0">
+                    <CheckBox x:Name="FavoriteCheck" Content="★ Favorito" Foreground="{StaticResource WarningBrush}" FontWeight="SemiBold"/>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,18,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Style="{StaticResource DangerButton}" Content="Eliminar de la biblioteca" Click="Delete_Click" Margin="0,0,8,0"/>
+                <Button Style="{StaticResource SecondaryButton}" Content="Crear acceso directo…" Click="CreateShortcut_Click"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource SecondaryButton}" Content="Cancelar" Click="Cancel_Click" Margin="0,0,8,0"/>
+                <Button Style="{StaticResource PrimaryButton}" Content="Guardar" Click="Save_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
