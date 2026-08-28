@@ -7,7 +7,7 @@
 
 A lightweight Windows launcher for visual novels with Locale Emulator integration, VNDB metadata, cover editing, developer browsing, favorites, WebP support, and smart desktop shortcuts.
 
-[Español](README.es.md) · [Download Beta 1.1](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.1)
+[Español](README.es.md) · [Download Beta 1.2](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.2)
 </div>
 
 ## Downloads
@@ -16,8 +16,8 @@ A lightweight Windows launcher for visual novels with Locale Emulator integratio
 
 | Package | Description | Download |
 | --- | --- | --- |
-| Installer | Self-contained installation with Start Menu integration and optional desktop shortcut | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.1/VNAR-Setup.exe) |
-| Portable | Self-contained portable build; extract and run `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.1/VNAR-Portable-win-x64.zip) |
+| Installer | Self-contained installation with Start Menu integration and optional desktop shortcut | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.2/VNAR-Setup.exe) |
+| Portable | Self-contained portable build; extract and run `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.2/VNAR-Portable-win-x64.zip) |
 
 Locale Emulator is **not bundled** with VNAR. On first launch, VNAR can use an existing `LEProc.exe` or download the official Locale Emulator release for you.
 
@@ -87,9 +87,25 @@ dotnet publish .\LocaleGameHub\LocaleGameHub.csproj -c Release -r win-x64 --self
 
 The repository also includes `build_portable.bat` and `build_small.bat` for local Windows builds.
 
+## Taskbar icons (Beta 1.2)
+
+VNAR now declares its own Windows AppUserModelID. Game shortcuts use a separate,
+stable ID per game, so opening one cannot supply its icon to the VNAR library window.
+The administrator option still only selects the Locale Emulator profile.
+
+Existing shortcuts keep working. Recreate them in VNAR to add the new shortcut
+identity. If an old pinned VNAR icon remains cached, unpin it, open the updated
+`VNAR.exe`, and pin that running window again. No icon-cache reset is required.
+
+Windows shell regression checks:
+
+```powershell
+dotnet run --project .\tests\VNAR.ShellTests\VNAR.ShellTests.csproj -c Release
+```
+
 ## Project status
 
-Current public build: **Beta 1.1 (`1.0.0-beta.1.1`)**.
+Current public build: **Beta 1.2 (`1.0.0-beta.1.2`)**.
 
 Bug reports and suggestions are welcome through GitHub Issues.
 

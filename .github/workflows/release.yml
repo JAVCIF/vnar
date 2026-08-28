@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RELEASE_TAG: v1.0.0-beta.1.1
+  RELEASE_TAG: v1.0.0-beta.1.2
 
 jobs:
   build-release:
@@ -34,6 +34,9 @@ jobs:
 
       - name: Restore
         run: dotnet restore .\LocaleGameHub\LocaleGameHub.csproj
+
+      - name: Test Windows taskbar and shortcut identities
+        run: dotnet run --project .\tests\VNAR.ShellTests\VNAR.ShellTests.csproj -c Release
 
       - name: Publish self-contained build
         shell: pwsh
@@ -135,9 +138,18 @@ jobs:
         run: |
           $tag = "${{ env.RELEASE_TAG }}"
           $notes = @"
-          ## VNAR Beta 1.1
+          ## VNAR Beta 1.2
 
-          First public GitHub beta package.
+          Fixes the launcher taskbar icon being replaced by a previously opened game shortcut.
+
+          - Stable, separate taskbar identity for the VNAR library window.
+          - Unique persistent identity for each game shortcut, independent of the admin setting.
+          - Installer shortcuts use the same launcher identity.
+          - Windows regression tests check process identities and saved shortcut properties.
+
+          Recreate old game shortcuts to add their explicit identity. If an old pinned VNAR
+          icon stays cached, unpin it and pin the running Beta 1.2 launcher again.
+          Existing library data and game launch profiles are unchanged.
 
           ### Downloads
           - **VNAR-Setup.exe** — self-contained Windows installer.
@@ -156,7 +168,7 @@ jobs:
               .\dist\VNAR-Setup.exe `
               .\dist\VNAR-Portable-win-x64.zip `
               .\dist\SHA256SUMS.txt `
-              --title "VNAR Beta 1.1" `
+              --title "VNAR Beta 1.2" `
               --notes $notes `
               --prerelease --draft `
               --target "${{ github.sha }}"

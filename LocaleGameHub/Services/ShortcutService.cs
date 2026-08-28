@@ -54,6 +54,7 @@ public static class ShortcutService
             ReleaseCom(shellObject);
         }
 
+        TaskbarIdentityService.SetShortcutIdentity(shortcutPath, game.Id);
         return shortcutPath;
     }
 

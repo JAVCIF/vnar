@@ -16,10 +16,15 @@ public partial class App : Application
 
         try
         {
+            var isGameLaunch = TryGetLaunchGameId(e.Args, out var gameId);
+            // Set the identity before creating any windows, including error dialogs.
+            // Old shortcuts without an explicit AppID cannot claim the launcher UI.
+            TaskbarIdentityService.SetCurrentProcessIdentity(isGameLaunch ? gameId : null);
+
             var preferences = new LibraryService();
             LocalizationService.SetLanguage(preferences.Settings.Language);
 
-            if (TryGetLaunchGameId(e.Args, out var gameId))
+            if (isGameLaunch)
             {
                 LaunchFromShortcut(preferences, gameId);
                 Shutdown(0);
