@@ -2,6 +2,14 @@
 
 VNAR includes, interoperates with, or optionally connects to third-party software and services. Those projects retain their own licenses and terms.
 
+Self-contained release packages also include a `licenses` directory containing the license and notice files supplied by the .NET installation and restored SkiaSharp/runtime packages. Preserve that directory when redistributing a build.
+
+## .NET and Windows Desktop runtime
+
+Self-contained Windows builds include the .NET and WPF runtimes. Their license and third-party notices are included in the release's `licenses` directory.
+
+Projects: https://github.com/dotnet/runtime and https://github.com/dotnet/wpf
+
 ## SkiaSharp
 
 VNAR uses **SkiaSharp 4.151.1** for image compatibility and WebP normalization.

@@ -53,6 +53,32 @@ jobs:
           Copy-Item .\README.md .\dist\portable\README.md
           Copy-Item .\README.es.md .\dist\portable\README.es.md
 
+          # Debug symbols are not required by end users (Skia's PDB is large).
+          Get-ChildItem .\dist\portable -Recurse -Filter *.pdb | Remove-Item
+
+      - name: Include dependency licenses
+        shell: pwsh
+        run: |
+          $noticeRoot = New-Item .\dist\portable\licenses -ItemType Directory -Force
+          $dotnetNotices = New-Item (Join-Path $noticeRoot.FullName 'dotnet') -ItemType Directory -Force
+          Get-ChildItem $env:DOTNET_ROOT -File |
+            Where-Object { $_.Name -match '(?i)license|notice' } |
+            Copy-Item -Destination $dotnetNotices.FullName
+
+          $assets = Get-Content .\LocaleGameHub\obj\project.assets.json -Raw | ConvertFrom-Json
+          foreach ($packageRoot in $assets.packageFolders.PSObject.Properties.Name) {
+            foreach ($package in (Get-ChildItem $packageRoot -Directory | Where-Object { $_.Name -like 'skiasharp*' -or $_.Name -like 'microsoft.netcore.app.runtime.*' -or $_.Name -like 'microsoft.windowsdesktop.app.runtime.*' })) {
+              foreach ($notice in (Get-ChildItem $package.FullName -Recurse -File | Where-Object { $_.Name -match '(?i)license|notice' -and $_.Extension -in '.txt', '.md', '.html', '' })) {
+                $relative = [IO.Path]::GetRelativePath($packageRoot, $notice.FullName)
+                $target = Join-Path $noticeRoot.FullName $relative
+                New-Item (Split-Path $target -Parent) -ItemType Directory -Force | Out-Null
+                Copy-Item $notice.FullName $target
+              }
+            }
+          }
+          if (!(Get-ChildItem $dotnetNotices.FullName -File)) { throw 'Missing .NET license notices' }
+          Get-ChildItem $noticeRoot.FullName -Recurse -File | Select-Object FullName
+
       - name: Create portable ZIP
         shell: pwsh
         run: |
