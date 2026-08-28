@@ -1,10 +1,168 @@
-name: VNAR Release Bootstrap
+name: Build Beta Release
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: vnar-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: v1.0.0-beta.1.1
+
 jobs:
-  waiting:
-    runs-on: ubuntu-latest
+  build-release:
+    runs-on: windows-latest
+
     steps:
-      - run: echo "Bootstrap files are being prepared."
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore .\LocaleGameHub\LocaleGameHub.csproj
+
+      - name: Publish self-contained build
+        shell: pwsh
+        run: |
+          dotnet publish .\LocaleGameHub\LocaleGameHub.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o .\dist\portable
+
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+
+          Copy-Item .\LICENSE .\dist\portable\LICENSE.txt
+          Copy-Item .\THIRD_PARTY_NOTICES.md .\dist\portable\THIRD_PARTY_NOTICES.md
+          Copy-Item .\README.md .\dist\portable\README.md
+          Copy-Item .\README.es.md .\dist\portable\README.es.md
+
+          # Debug symbols are not required by end users (Skia's PDB is large).
+          Get-ChildItem .\dist\portable -Recurse -Filter *.pdb | Remove-Item
+
+      - name: Include dependency licenses
+        shell: pwsh
+        run: |
+          $noticeRoot = New-Item .\dist\portable\licenses -ItemType Directory -Force
+          $dotnetNotices = New-Item (Join-Path $noticeRoot.FullName 'dotnet') -ItemType Directory -Force
+          Get-ChildItem $env:DOTNET_ROOT -File |
+            Where-Object { $_.Name -match '(?i)license|notice' } |
+            Copy-Item -Destination $dotnetNotices.FullName
+
+          $assets = Get-Content .\LocaleGameHub\obj\project.assets.json -Raw | ConvertFrom-Json
+          foreach ($packageRoot in $assets.packageFolders.PSObject.Properties.Name) {
+            foreach ($package in (Get-ChildItem $packageRoot -Directory | Where-Object { $_.Name -like 'skiasharp*' -or $_.Name -like 'microsoft.netcore.app.runtime.*' -or $_.Name -like 'microsoft.windowsdesktop.app.runtime.*' })) {
+              foreach ($notice in (Get-ChildItem $package.FullName -Recurse -File | Where-Object { $_.Name -match '(?i)license|notice' -and $_.Extension -in '.txt', '.md', '.html', '' })) {
+                $relative = [IO.Path]::GetRelativePath($packageRoot, $notice.FullName)
+                $target = Join-Path $noticeRoot.FullName $relative
+                New-Item (Split-Path $target -Parent) -ItemType Directory -Force | Out-Null
+                Copy-Item $notice.FullName $target
+              }
+            }
+          }
+          if (!(Get-ChildItem $dotnetNotices.FullName -File)) { throw 'Missing .NET license notices' }
+          Get-ChildItem $noticeRoot.FullName -Recurse -File | Select-Object FullName
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path .\dist\portable\* -DestinationPath .\dist\VNAR-Portable-win-x64.zip -Force
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .\installer\VNAR.iss
+          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
+
+      - name: Verify packages and create checksums
+        shell: pwsh
+        run: |
+          foreach ($file in @('.\dist\portable\VNAR.exe', '.\dist\portable\Resources\VNARShortcut.ico', '.\dist\VNAR-Setup.exe', '.\dist\VNAR-Portable-win-x64.zip')) {
+            if (!(Test-Path $file) -or (Get-Item $file).Length -eq 0) { throw "Missing or empty package file: $file" }
+          }
+          Get-FileHash .\dist\VNAR-Setup.exe, .\dist\VNAR-Portable-win-x64.zip -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content .\dist\SHA256SUMS.txt -Encoding ascii
+
+      - name: Upload validated packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: vnar-windows-packages
+          path: |
+            dist/VNAR-Setup.exe
+            dist/VNAR-Portable-win-x64.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  publish-release:
+    needs: build-release
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download validated packages
+        uses: actions/download-artifact@v4
+        with:
+          name: vnar-windows-packages
+          path: dist
+
+      - name: Publish GitHub prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $tag = "${{ env.RELEASE_TAG }}"
+          $notes = @"
+          ## VNAR Beta 1.1
+
+          First public GitHub beta package.
+
+          ### Downloads
+          - **VNAR-Setup.exe** — self-contained Windows installer.
+          - **VNAR-Portable-win-x64.zip** — self-contained portable build.
+          - **SHA256SUMS.txt** — package checksums.
+
+          Both packages store settings and artwork in `%LOCALAPPDATA%\VNAR`.
+          The executables are unsigned; Windows may display a SmartScreen warning.
+
+          See the repository README for setup instructions, features, and third-party notices.
+          "@
+
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag `
+              .\dist\VNAR-Setup.exe `
+              .\dist\VNAR-Portable-win-x64.zip `
+              .\dist\SHA256SUMS.txt `
+              --title "VNAR Beta 1.1" `
+              --notes $notes `
+              --prerelease --draft `
+              --target "${{ github.sha }}"
+            if ($LASTEXITCODE -ne 0) { throw "Release upload failed" }
+            gh release edit $tag --draft=false
+            if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
+          } else {
+            Write-Host "Release $tag already exists; keeping its original packages. Bump RELEASE_TAG for the next release."
+          }
