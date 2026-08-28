@@ -33,8 +33,9 @@ internal static class Program
             Equal(TaskbarIdentityService.LauncherAppId, ReadProcessIdentity(), "launcher after second game");
             Console.WriteLine("PASS: explicit process identities remain separate.");
 
-            var normalLink = ShortcutService.CreateShortcut(first, "Normal á", root, icon);
-            var adminLink = ShortcutService.CreateShortcut(second, "Admin かな", root, icon);
+            // Keep fixture filenames independent of WScript.Shell ANSI code-page limitations.
+            var normalLink = ShortcutService.CreateShortcut(first, "Normal shortcut", root, icon);
+            var adminLink = ShortcutService.CreateShortcut(second, "Admin shortcut", root, icon);
             VerifyShortcut(normalLink, first, icon);
             VerifyShortcut(adminLink, second, icon);
             NotEqual(ReadShortcutIdentity(normalLink), ReadShortcutIdentity(adminLink), "different games");
@@ -54,7 +55,7 @@ internal static class Program
 
             // An older link can be recreated in place, adding the property while
             // retaining the intended launch arguments and chosen icon.
-            var replacement = ShortcutService.CreateShortcut(first, "Normal á", root, icon);
+            var replacement = ShortcutService.CreateShortcut(first, "Normal shortcut", root, icon);
             VerifyShortcut(replacement, first, icon);
             Console.WriteLine("PASS: shortcut replacement preserves target, arguments, description and icon.");
             return 0;
