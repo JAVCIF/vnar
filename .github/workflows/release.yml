@@ -1,0 +1,115 @@
+name: Bootstrap and Build Beta Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: v1.0.0-beta.1.1
+
+jobs:
+  bootstrap-build-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Expand VNAR source
+        shell: pwsh
+        run: |
+          if (Test-Path .\source-bootstrap.zip) {
+            Expand-Archive -Path .\source-bootstrap.zip -DestinationPath . -Force
+            Remove-Item .\source-bootstrap.zip -Force
+          }
+
+      - name: Commit source tree
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "Publish VNAR Beta 1.1 source"
+            git push origin HEAD:main
+          }
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore .\LocaleGameHub\LocaleGameHub.csproj
+
+      - name: Publish self-contained build
+        shell: pwsh
+        run: |
+          dotnet publish .\LocaleGameHub\LocaleGameHub.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o .\dist\portable
+
+          Copy-Item .\LICENSE .\dist\portable\LICENSE.txt
+          Copy-Item .\THIRD_PARTY_NOTICES.md .\dist\portable\THIRD_PARTY_NOTICES.md
+          Copy-Item .\README.md .\dist\portable\README.md
+          Copy-Item .\README.es.md .\dist\portable\README.es.md
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: Compress-Archive -Path .\dist\portable\* -DestinationPath .\dist\VNAR-Portable-win-x64.zip -Force
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .\installer\VNAR.iss'
+
+      - name: Publish GitHub prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ env.RELEASE_TAG }}"
+          $notes = @"
+          ## VNAR Beta 1.1
+
+          First public GitHub beta package.
+
+          ### Downloads
+          - **VNAR-Setup.exe** — self-contained Windows installer.
+          - **VNAR-Portable-win-x64.zip** — self-contained portable build.
+
+          See the repository README for setup instructions, features, and third-party notices.
+          "@
+
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag `
+              .\dist\VNAR-Setup.exe `
+              .\dist\VNAR-Portable-win-x64.zip `
+              --title "VNAR Beta 1.1" `
+              --notes $notes `
+              --prerelease `
+              --target main
+          } else {
+            gh release upload $tag `
+              .\dist\VNAR-Setup.exe `
+              .\dist\VNAR-Portable-win-x64.zip `
+              --clobber
+            gh release edit $tag `
+              --title "VNAR Beta 1.1" `
+              --notes $notes `
+              --prerelease
+          }
