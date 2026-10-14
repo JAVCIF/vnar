@@ -63,7 +63,7 @@ internal static class ModernShortcutTests
         Equal(".url", Path.GetExtension(url), "modern shortcut extension");
         var (storedUrl, iconFile, iconIndex) = ReadUrlShortcut(url);
         Equal(VnarUri.BuildLaunch(game.Id), storedUrl, "stored URL");
-        Equal(customIcon.ToUpperInvariant(), iconFile.ToUpperInvariant(), "stored icon");
+        Equal(customIcon.ToUpperInvariant(), NormalizeIconLocation(iconFile).ToUpperInvariant(), "stored icon");
         Equal("0", iconIndex.ToString(), "stored icon index");
         using (var key = Registry.CurrentUser.OpenSubKey(ProtocolKey))
         {
@@ -78,7 +78,7 @@ internal static class ModernShortcutTests
         var expectedGeneric = ShortcutService.GetGenericIconPath().EndsWith(".ico", StringComparison.OrdinalIgnoreCase)
             ? Path.Combine(AppDataPaths.IconsDir, IconStore.GenericIconFileName)
             : ShortcutService.GetGenericIconPath();
-        Equal(expectedGeneric.ToUpperInvariant(), ReadUrlShortcut(genericUrl).IconFile.ToUpperInvariant(), "generic icon location");
+        Equal(expectedGeneric.ToUpperInvariant(), NormalizeIconLocation(ReadUrlShortcut(genericUrl).IconFile).ToUpperInvariant(), "generic icon location");
         Console.WriteLine("PASS: generic icon for modern shortcuts survives moving a portable VNAR.");
 
         // 3. A moved portable is re-registered at startup.
@@ -155,6 +155,11 @@ internal static class ModernShortcutTests
             Marshal.FinalReleaseComObject(shortcut);
         }
     }
+
+    private static string NormalizeIconLocation(string value)
+        => Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.IsFile
+            ? uri.LocalPath
+            : value;
 
     private static T? WaitFor<T>(Func<T?> probe, TimeSpan timeout)
     {
