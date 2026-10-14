@@ -117,7 +117,8 @@
                                         </Grid.RowDefinitions>
                                         <Border x:Name="CoverArea" Background="#080C12" CornerRadius="10,10,0,0" ClipToBounds="True">
                                             <Grid>
-                                                <Image Source="{Binding Game.CoverPath}" Stretch="UniformToFill" Tag="{Binding Game}"
+                                                <Image Source="{Binding CoverImage}"
+                                                       Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" Tag="{Binding Game}"
                                                        MouseLeftButtonDown="Cover_MouseLeftButtonDown" Cursor="Hand"/>
                                                 <Border x:Name="TitleOverlay" VerticalAlignment="Bottom" Background="#D00A0F17" Padding="9">
                                                     <Border.Style>
@@ -190,7 +191,8 @@
                                         MouseLeftButtonDown="DeveloperCard_MouseLeftButtonDown" ContextMenuOpening="DeveloperCard_ContextMenuOpening" Cursor="Hand">
                                     <Border.ContextMenu><ContextMenu/></Border.ContextMenu>
                                     <Grid ClipToBounds="True">
-                                        <Image Source="{Binding Developer.CoverPath}" Stretch="UniformToFill">
+                                        <Image Source="{Binding CoverImage}"
+                                               Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality">
                                             <Image.Style>
                                                 <Style TargetType="Image">
                                                     <Setter Property="Visibility" Value="Visible"/>

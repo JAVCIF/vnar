@@ -1,7 +1,7 @@
 <Window x:Class="LocaleGameHub.ShortcutWindow" Icon="Resources/VNAR.ico"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Crear acceso directo · VNAR" Height="650" Width="760" MinHeight="560" MinWidth="680"
+        Title="Crear acceso directo · VNAR" Height="760" Width="760" MinHeight="660" MinWidth="680"
         Background="{StaticResource BgBrush}" WindowStartupLocation="CenterOwner">
     <Grid Margin="22" Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
@@ -33,14 +33,33 @@
                     <TextBox x:Name="DestinationBox" IsReadOnly="True"/>
                     <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Elegir…" Click="BrowseDestination_Click" Margin="8,0,0,0"/>
                 </Grid>
+
+                <!-- Texts are set in code (LocalizationService.Bi), so no dictionary entries are needed. -->
+                <TextBlock x:Name="KindTitleText" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="ModernKindRadio" GroupName="ShortcutKind" Foreground="{StaticResource TextBrush}"
+                                 Margin="0,0,22,0" Checked="ShortcutKind_Checked"/>
+                    <RadioButton x:Name="ClassicKindRadio" GroupName="ShortcutKind" Foreground="{StaticResource TextBrush}"
+                                 Checked="ShortcutKind_Checked"/>
+                </StackPanel>
+                <TextBlock x:Name="KindHintText" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="2" Margin="0,18,0,8">
-            <TextBlock Text="Icono" FontSize="17" FontWeight="Bold" Foreground="{StaticResource AccentHoverBrush}"/>
-            <TextBlock Text="VNAR busca iconos en los ejecutables de la misma carpeta del juego. Si ninguno sirve, puedes usar el icono genérico de VNAR."
-                       Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-        </StackPanel>
+        <Grid Grid.Row="2" Margin="0,18,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Icono" FontSize="17" FontWeight="Bold" Foreground="{StaticResource AccentHoverBrush}"/>
+                <TextBlock Text="VNAR busca iconos en los ejecutables de la misma carpeta del juego. Si ninguno sirve, puedes usar el icono genérico de VNAR."
+                           Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+            </StackPanel>
+            <!-- Content set in code (LocalizationService.Bi). -->
+            <Button x:Name="CustomIconButton" Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                    VerticalAlignment="Bottom" Margin="12,0,0,0" Click="CustomIcon_Click"/>
+        </Grid>
 
         <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrushDark}" BorderThickness="1"
                 CornerRadius="10" Padding="8">

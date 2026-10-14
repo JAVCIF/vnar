@@ -5,12 +5,29 @@ public static class AppDataPaths
     private static readonly string LocalAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
     private static readonly string LegacyRoot = Path.Combine(LocalAppData, "LocaleGameHub");
 
-    public static string Root { get; } = Path.Combine(LocalAppData, "VNAR");
+    /// <summary>
+    /// Environment variable that redirects all VNAR data to another folder. Used by
+    /// the automated tests so they can never touch a real library.
+    /// </summary>
+    public const string DataDirOverrideVariable = "VNAR_DATA_DIR";
+
+    public static string Root { get; } = ResolveRoot();
+
+    private static string ResolveRoot()
+    {
+        var overrideDir = Environment.GetEnvironmentVariable(DataDirOverrideVariable);
+        return string.IsNullOrWhiteSpace(overrideDir)
+            ? Path.Combine(LocalAppData, "VNAR")
+            : Path.GetFullPath(overrideDir);
+    }
 
     public static string LibraryFile => Path.Combine(Root, "library.json");
     public static string SettingsFile => Path.Combine(Root, "settings.json");
     public static string DevelopersFile => Path.Combine(Root, "developers.json");
     public static string CoversDir => Path.Combine(Root, "covers");
+
+    /// <summary>Custom .ico files chosen for shortcuts.</summary>
+    public static string IconsDir => Path.Combine(Root, "icons");
 
     public static void Ensure()
     {
@@ -21,6 +38,8 @@ public static class AppDataPaths
 
     private static void MigrateLegacyDataIfNeeded()
     {
+        // Never pull a real legacy library into a redirected (test) data folder.
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(DataDirOverrideVariable))) return;
         if (Directory.Exists(Root) || !Directory.Exists(LegacyRoot)) return;
 
         DirectoryCopy(LegacyRoot, Root, true);

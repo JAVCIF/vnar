@@ -7,7 +7,7 @@
 
 Un launcher ligero para Windows enfocado en visual novels, con integración con Locale Emulator, metadatos de VNDB, edición de portadas, navegación por desarrolladores, favoritos, soporte WebP y accesos directos inteligentes.
 
-[English](README.md) · [Descargar Beta 1.2](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.2)
+[English](README.md) · [Descargar Beta 1.3](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3)
 </div>
 
 ## Descargas
@@ -16,8 +16,8 @@ Un launcher ligero para Windows enfocado en visual novels, con integración con 
 
 | Paquete | Descripción | Descarga |
 | --- | --- | --- |
-| Instalador | Instalación autocontenida, acceso en el menú Inicio y acceso de escritorio opcional | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.2/VNAR-Setup.exe) |
-| Portable | Versión autocontenida; descomprime y ejecuta `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.2/VNAR-Portable-win-x64.zip) |
+| Instalador | Instalación autocontenida, acceso en el menú Inicio y acceso de escritorio opcional | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Setup.exe) |
+| Portable | Versión autocontenida; descomprime y ejecuta `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Portable-win-x64.zip) |
 
 Locale Emulator **no viene incluido** dentro de VNAR. En el primer arranque puedes seleccionar un `LEProc.exe` existente o dejar que VNAR descargue la versión oficial de Locale Emulator.
 
@@ -81,21 +81,28 @@ dotnet run --project .\LocaleGameHub\LocaleGameHub.csproj
 
 También se incluyen `build_portable.bat` y `build_small.bat` para compilaciones locales.
 
-## Iconos de la barra de tareas (Beta 1.2)
+## Accesos directos e iconos de Windows (Beta 1.3)
 
-VNAR ahora declara su propio AppUserModelID de Windows. Cada acceso de juego tiene
-una identidad distinta y estable para que su icono no se asocie a la ventana del
-launcher. La opción de administrador sigue cambiando únicamente el perfil de
-Locale Emulator.
+El acceso **Moderno** recomendado es un acceso de Internet (`.url`) que abre un
+enlace `vnar://launch/<id-del-juego>`. Nunca apunta directamente a `VNAR.exe`, así
+que Windows no reutiliza el nombre o icono del último juego para VNAR en el
+Administrador de tareas. Sigue ejecutando el mismo y único `VNAR.exe`, sin añadir
+otro ejecutable ni un aviso inicial de SmartScreen por cada juego.
 
-Los accesos antiguos siguen funcionando. Vuelve a crearlos desde VNAR para añadir
-la nueva identidad. Si Windows conserva el icono de un VNAR anclado anteriormente,
-desancla ese acceso, abre el `VNAR.exe` actualizado y ancla la ventana nueva.
-No necesitas borrar la caché global de iconos ni tus datos.
+Los accesos **Clásicos** (`.lnk`) continúan disponibles cuando necesitas anclarlos a
+la barra de tareas, pero Windows puede asociar su icono de juego con VNAR porque
+apuntan al ejecutable del launcher. Los accesos anteriores siguen funcionando;
+recréalos como Modernos para obtener el comportamiento nuevo. La opción de
+administrador sigue cambiando únicamente el perfil de Locale Emulator.
+
+Los iconos de accesos modernos se guardan en la carpeta de datos de VNAR, por lo que
+los personalizados y el genérico sobreviven si mueves una instalación portable. Al
+abrir VNAR normalmente desde la ubicación nueva, se actualiza el registro por usuario
+del protocolo `vnar://`.
 
 ## Estado del proyecto
 
-Versión pública actual: **Beta 1.2 (`1.0.0-beta.1.2`)**.
+Versión pública actual: **Beta 1.3 (`1.0.0-beta.1.3`)**.
 
 Puedes usar GitHub Issues para reportar errores o proponer mejoras.
 

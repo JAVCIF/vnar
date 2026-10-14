@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Tests for VNAR's non-UI logic: storage and recovery, cross-process saves, cover
+    cleanup, cover decode sizing, scanning, download limits, vnar:// links, version
+    info and (on Windows) DPAPI. The production files are compiled in directly, so
+    this runs on any OS without WPF. Run: dotnet run -c Release (exit code 0 = pass).
+    All data goes to a temporary folder via VNAR_DATA_DIR; it never touches a real library.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The P/Invoke in SecretProtector is Windows-only; tests skip it elsewhere. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AppSrc>..\..\LocaleGameHub\</AppSrc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(AppSrc)GlobalUsings.cs" Link="App\GlobalUsings.cs" />
+    <Compile Include="$(AppSrc)Services\JsonStore.cs" Link="App\JsonStore.cs" />
+    <Compile Include="$(AppSrc)Services\LibraryService.cs" Link="App\LibraryService.cs" />
+    <Compile Include="$(AppSrc)Services\AppDataPaths.cs" Link="App\AppDataPaths.cs" />
+    <Compile Include="$(AppSrc)Services\CoverDecodeMath.cs" Link="App\CoverDecodeMath.cs" />
+    <Compile Include="$(AppSrc)Services\CoverCleanupService.cs" Link="App\CoverCleanupService.cs" />
+    <Compile Include="$(AppSrc)Services\ScannerService.cs" Link="App\ScannerService.cs" />
+    <Compile Include="$(AppSrc)Services\DownloadGuard.cs" Link="App\DownloadGuard.cs" />
+    <Compile Include="$(AppSrc)Services\AppInfo.cs" Link="App\AppInfo.cs" />
+    <Compile Include="$(AppSrc)Services\VnarUri.cs" Link="App\VnarUri.cs" />
+    <Compile Include="$(AppSrc)Services\IconStore.cs" Link="App\IconStore.cs" />
+    <Compile Include="$(AppSrc)Models\GameEntry.cs" Link="App\GameEntry.cs" />
+    <Compile Include="$(AppSrc)Models\DeveloperEntry.cs" Link="App\DeveloperEntry.cs" />
+    <Compile Include="$(AppSrc)Models\AppSettings.cs" Link="App\AppSettings.cs" />
+    <Compile Include="$(AppSrc)Models\VndbDeveloperRef.cs" Link="App\VndbDeveloperRef.cs" />
+    <Compile Include="$(AppSrc)Models\CoverEditState.cs" Link="App\CoverEditState.cs" />
+    <Compile Include="$(AppSrc)Models\ScanCandidate.cs" Link="App\ScanCandidate.cs" />
+  </ItemGroup>
+
+  <!-- Real DPAPI on Windows; a reversible stand-in elsewhere so the rest still runs. -->
+  <!-- (Stubs\SecretProtectorStub.cs is picked up by default compile items.) -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+    <Compile Remove="Stubs\SecretProtectorStub.cs" />
+    <Compile Include="$(AppSrc)Services\SecretProtector.cs" Link="App\SecretProtector.cs" />
+  </ItemGroup>
+</Project>

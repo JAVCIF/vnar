@@ -13,7 +13,7 @@ public sealed class ImageSearchService
 
     static ImageSearchService()
     {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("VNAR/0.2.0");
+        Http.DefaultRequestHeaders.UserAgent.ParseAdd(AppInfo.UserAgent);
     }
 
     public async Task<IReadOnlyList<CoverSearchResult>> SearchGoogleImagesAsync(

@@ -2,9 +2,10 @@ using LocaleGameHub.Services;
 
 namespace LocaleGameHub.Models;
 
-public sealed class GameCardViewModel
+public sealed class GameCardViewModel : CoverCardViewModel
 {
     public required GameEntry Game { get; init; }
+    public override string CoverPath => Game.CoverPath;
     public string AdminLabel => LocalizationService.Bi("Ejecutar como administrador", "Run as administrator");
     public string PlayLabel => LocalizationService.Bi("▶ Jugar", "▶ Play");
     public string EditTooltip => LocalizationService.Bi("Editar juego", "Edit game");

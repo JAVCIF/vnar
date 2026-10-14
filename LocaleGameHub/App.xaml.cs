@@ -16,10 +16,34 @@ public partial class App : Application
 
         try
         {
-            var isGameLaunch = TryGetLaunchGameId(e.Args, out var gameId);
+            var launch = ParseLaunchRequest(e.Args, out var gameId);
+            var isGameLaunch = launch != LaunchRequest.None;
+
             // Set the identity before creating any windows, including error dialogs.
+            // Classic (.lnk) launches take the game's identity so pinned shortcuts keep
+            // their own icon. Modern (vnar://) launches keep VNAR's identity, as Steam
+            // and Playnite do, so Windows never associates a game with VNAR.exe.
             // Old shortcuts without an explicit AppID cannot claim the launcher UI.
-            TaskbarIdentityService.SetCurrentProcessIdentity(isGameLaunch ? gameId : null);
+            TaskbarIdentityService.SetCurrentProcessIdentity(launch == LaunchRequest.Classic ? gameId : null);
+
+            if (launch == LaunchRequest.InvalidLink)
+            {
+                // A vnar:// link this version does not understand (e.g. from a web page):
+                // never fall through to opening the library for it.
+                MessageBox.Show(
+                    LocalizationService.Bi("Ese enlace de VNAR no es válido.", "That VNAR link is not valid."),
+                    "VNAR", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Shutdown(0);
+                return;
+            }
+
+            // Only one library window per session; a second launch brings the
+            // existing one to the front instead of loading a second copy of the data.
+            if (!isGameLaunch && !SingleInstanceService.TryClaimPrimary())
+            {
+                Shutdown(0);
+                return;
+            }
 
             var preferences = new LibraryService();
             LocalizationService.SetLanguage(preferences.Settings.Language);
@@ -31,9 +55,15 @@ public partial class App : Application
                 return;
             }
 
+            // If modern shortcuts were ever created, keep vnar:// pointing at this
+            // VNAR.exe (a portable copy may have been moved since).
+            try { ProtocolRegistrationService.RefreshIfRegistered(ShortcutService.ResolveVnarExecutable()); }
+            catch { /* modern shortcuts keep the old path until the next start */ }
+
             var main = new MainWindow();
             MainWindow = main;
             main.Show();
+            SingleInstanceService.ListenForActivation(() => Dispatcher.BeginInvoke(new Action(main.BringToFront)));
         }
         catch (Exception ex)
         {
@@ -43,32 +73,52 @@ public partial class App : Application
     }
 
 
-    private static bool TryGetLaunchGameId(string[] args, out Guid gameId)
+    private enum LaunchRequest
+    {
+        None,
+        Classic,     // --launch <id>  (from a .lnk)
+        Modern,      // vnar://launch/<id>  (from a .url, via the protocol)
+        InvalidLink  // vnar:// link that is not a valid launch command
+    }
+
+    private static LaunchRequest ParseLaunchRequest(string[] args, out Guid gameId)
     {
         gameId = Guid.Empty;
         for (var i = 0; i < args.Length; i++)
         {
             var arg = args[i];
+            if (VnarUri.IsVnarUri(arg.Trim('"')))
+                return VnarUri.TryParseLaunch(arg, out gameId) ? LaunchRequest.Modern : LaunchRequest.InvalidLink;
+
             if (arg.StartsWith("--launch=", StringComparison.OrdinalIgnoreCase))
-                return Guid.TryParse(arg["--launch=".Length..].Trim('"'), out gameId);
+                return Guid.TryParse(arg["--launch=".Length..].Trim('"'), out gameId) ? LaunchRequest.Classic : LaunchRequest.None;
 
             if (!arg.Equals("--launch", StringComparison.OrdinalIgnoreCase) || i + 1 >= args.Length) continue;
-            return Guid.TryParse(args[i + 1].Trim('"'), out gameId);
+            return Guid.TryParse(args[i + 1].Trim('"'), out gameId) ? LaunchRequest.Classic : LaunchRequest.None;
         }
-        return false;
+        return LaunchRequest.None;
     }
 
     private static void LaunchFromShortcut(LibraryService library, Guid gameId)
     {
-        var game = library.Games.FirstOrDefault(g => g.Id == gameId)
-            ?? throw new InvalidOperationException(LocalizationService.Bi(
+        var game = library.Games.FirstOrDefault(g => g.Id == gameId);
+        if (game is null)
+        {
+            var message = LocalizationService.Bi(
                 "Ese acceso directo apunta a un juego que ya no existe en la biblioteca de VNAR.",
-                "This shortcut points to a game that no longer exists in the VNAR library."));
+                "This shortcut points to a game that no longer exists in the VNAR library.");
+            if (JsonStore.HasPendingRecoveries)
+                message += "\n\n" + LocalizationService.Bi(
+                    "Además, un archivo de datos de VNAR estaba dañado y se apartó. Abre VNAR para ver los detalles.",
+                    "Also, a VNAR data file was damaged and was set aside. Open VNAR to see the details.");
+            throw new InvalidOperationException(message);
+        }
 
         var locale = new LocaleEmulatorService(library);
         locale.Launch(game);
-        game.LastPlayedUtc = DateTime.UtcNow;
-        library.SaveGames();
+        // Re-reads the library under the shared lock so edits made meanwhile in the
+        // library window are not overwritten by this process's startup snapshot.
+        library.RecordLaunch(game.Id, DateTime.UtcNow);
     }
 
     private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

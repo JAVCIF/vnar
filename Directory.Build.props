@@ -1,0 +1,14 @@
+<Project>
+  <!--
+    Single source of truth for the VNAR version.
+    To release: change <Version>, add a matching "## <version>" section to CHANGELOG.md
+    (the release workflow uses it as the release notes), and update the README links.
+    The executable, the User-Agent sent to VNDB and other sites, the installer and the
+    GitHub release tag all derive from this value.
+  -->
+  <PropertyGroup>
+    <Version>1.0.0-beta.1.3</Version>
+    <!-- Keep ProductVersion exactly equal to <Version> (no "+commit" suffix). -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

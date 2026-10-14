@@ -292,7 +292,7 @@ public partial class GameEditorWindow : Window
     private void CreateShortcut_Click(object sender, RoutedEventArgs e)
     {
         if (!TryApplyCurrentGameFields()) return;
-        var dialog = new ShortcutWindow(_game) { Owner = this };
+        var dialog = new ShortcutWindow(_game, _library) { Owner = this };
         dialog.ShowDialog();
     }
 

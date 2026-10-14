@@ -16,16 +16,34 @@ concurrency:
   group: vnar-release-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  RELEASE_TAG: v1.0.0-beta.1.2
-
 jobs:
   build-release:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      title: ${{ steps.version.outputs.title }}
+      has_notes: ${{ steps.notes.outputs.has_notes }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Directory.Build.props is the single source of the version; the tag, the
+      # installer version and the release title all come from it.
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $props = [xml](Get-Content .\Directory.Build.props -Raw)
+          $node = $props.SelectSingleNode('//Version')
+          if ($null -eq $node -or -not $node.InnerText.Trim()) { throw "Directory.Build.props has no <Version>." }
+          $version = $node.InnerText.Trim()
+          $title = if ($version -match '^1\.0\.0-beta\.(.+)$') { "VNAR Beta $($Matches[1])" } else { "VNAR $version" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+          "title=$title" >> $env:GITHUB_OUTPUT
+          Write-Host "Building $title ($version)"
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
@@ -37,6 +55,11 @@ jobs:
 
       - name: Test Windows taskbar and shortcut identities
         run: dotnet run --project .\tests\VNAR.ShellTests\VNAR.ShellTests.csproj -c Release
+
+      # Storage/recovery, cross-process saves, cover cleanup, decode sizing, scanning,
+      # download limits, vnar:// links, version and DPAPI. Uses a temp data folder.
+      - name: Test core logic
+        run: dotnet run --project .\tests\VNAR.CoreTests\VNAR.CoreTests.csproj -c Release
 
       - name: Publish self-contained build
         shell: pwsh
@@ -94,7 +117,7 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .\installer\VNAR.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.version.outputs.version }}" .\installer\VNAR.iss
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
 
       - name: Verify packages and create checksums
@@ -107,6 +130,41 @@ jobs:
             ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
             Set-Content .\dist\SHA256SUMS.txt -Encoding ascii
 
+      # Release notes = the "## <version>" section of CHANGELOG.md + download info.
+      # A missing section only fails the job that would publish a new release.
+      - name: Build release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $title = '${{ steps.version.outputs.title }}'
+          $lines = Get-Content .\CHANGELOG.md -Encoding utf8
+          $section = New-Object System.Collections.Generic.List[string]
+          $inside = $false
+          foreach ($line in $lines) {
+            if ($line.Trim() -eq "## $version") { $inside = $true; continue }
+            if ($inside -and $line -match '^## ') { break }
+            if ($inside) { $section.Add($line) }
+          }
+          $body = ($section -join "`n").Trim()
+          $hasNotes = if ($body) { 'true' } else { 'false' }
+          "has_notes=$hasNotes" >> $env:GITHUB_OUTPUT
+
+          $downloads = @"
+          ### Downloads
+          - **VNAR-Setup.exe** — self-contained Windows installer.
+          - **VNAR-Portable-win-x64.zip** — self-contained portable build.
+          - **SHA256SUMS.txt** — package checksums.
+
+          Both packages store settings and artwork in ``%LOCALAPPDATA%\VNAR``.
+          The executables are unsigned; Windows may display a SmartScreen warning.
+
+          See the repository README for setup instructions, features, and third-party notices.
+          "@
+
+          Set-Content .\dist\release-notes.md -Value "## $title`n`n$body`n`n$downloads" -Encoding utf8
+          Get-Content .\dist\release-notes.md
+
       - name: Upload validated packages
         uses: actions/upload-artifact@v4
         with:
@@ -115,6 +173,7 @@ jobs:
             dist/VNAR-Setup.exe
             dist/VNAR-Portable-win-x64.zip
             dist/SHA256SUMS.txt
+            dist/release-notes.md
           if-no-files-found: error
 
   publish-release:
@@ -136,45 +195,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          $tag = "${{ env.RELEASE_TAG }}"
-          $notes = @"
-          ## VNAR Beta 1.2
-
-          Fixes the launcher taskbar icon being replaced by a previously opened game shortcut.
-
-          - Stable, separate taskbar identity for the VNAR library window.
-          - Unique persistent identity for each game shortcut, independent of the admin setting.
-          - Installer shortcuts use the same launcher identity.
-          - Windows regression tests check process identities and saved shortcut properties.
-
-          Recreate old game shortcuts to add their explicit identity. If an old pinned VNAR
-          icon stays cached, unpin it and pin the running Beta 1.2 launcher again.
-          Existing library data and game launch profiles are unchanged.
-
-          ### Downloads
-          - **VNAR-Setup.exe** — self-contained Windows installer.
-          - **VNAR-Portable-win-x64.zip** — self-contained portable build.
-          - **SHA256SUMS.txt** — package checksums.
-
-          Both packages store settings and artwork in `%LOCALAPPDATA%\VNAR`.
-          The executables are unsigned; Windows may display a SmartScreen warning.
-
-          See the repository README for setup instructions, features, and third-party notices.
-          "@
+          $tag = '${{ needs.build-release.outputs.tag }}'
+          $title = '${{ needs.build-release.outputs.title }}'
+          $version = '${{ needs.build-release.outputs.version }}'
 
           gh release view $tag 2>$null
           if ($LASTEXITCODE -ne 0) {
+            if ('${{ needs.build-release.outputs.has_notes }}' -ne 'true') {
+              throw "CHANGELOG.md has no '## $version' section. Add the release notes there before publishing $tag."
+            }
             gh release create $tag `
               .\dist\VNAR-Setup.exe `
               .\dist\VNAR-Portable-win-x64.zip `
               .\dist\SHA256SUMS.txt `
-              --title "VNAR Beta 1.2" `
-              --notes $notes `
+              --title $title `
+              --notes-file .\dist\release-notes.md `
               --prerelease --draft `
               --target "${{ github.sha }}"
             if ($LASTEXITCODE -ne 0) { throw "Release upload failed" }
             gh release edit $tag --draft=false
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           } else {
-            Write-Host "Release $tag already exists; keeping its original packages. Bump RELEASE_TAG for the next release."
+            Write-Host "Release $tag already exists; keeping its original packages. Bump <Version> in Directory.Build.props for the next release."
           }

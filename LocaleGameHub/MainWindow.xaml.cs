@@ -35,18 +35,41 @@ public partial class MainWindow : Window
         LocalizationService.Apply(this);
         _locale = new LocaleEmulatorService(_library);
         Loaded += MainWindow_Loaded;
+        // Before the window is shown this is the system DPI; Loaded/OnDpiChanged
+        // correct it for the monitor the window actually lands on.
+        CoverImageLoader.DpiScale = System.Windows.Media.VisualTreeHelper.GetDpi(this).DpiScaleX;
         RefreshLibrary();
         RefreshLocaleBanner();
+    }
+
+    protected override void OnDpiChanged(System.Windows.DpiScale oldDpi, System.Windows.DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        ApplyCoverDpi(newDpi.DpiScaleX);
+    }
+
+    /// <summary>Re-decodes visible covers when the window moves to a monitor with another scale.</summary>
+    private void ApplyCoverDpi(double scale)
+    {
+        if (Math.Abs(CoverImageLoader.DpiScale - scale) < 0.001) return;
+        CoverImageLoader.DpiScale = scale;
+        RefreshLibrary();
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Maximized;
+        ApplyCoverDpi(System.Windows.Media.VisualTreeHelper.GetDpi(this).DpiScaleX);
         LocalizationService.Apply(this);
         UpdateTabVisuals();
 
         if (_startupLocaleCheckDone) return;
         _startupLocaleCheckDone = true;
+
+        var dataWasRecovered = ShowStorageRecoveryNotices();
+        // After a recovery the library may be missing entries, and their covers would
+        // look unused. Only tidy the covers folder when the data loaded cleanly.
+        if (!dataWasRecovered) StartCoverCleanup();
 
         if (!HasValidLocaleEmulatorPath())
         {
@@ -60,6 +83,77 @@ public partial class MainWindow : Window
             }
             RefreshLocaleBanner();
         }
+    }
+
+    /// <summary>Called when another VNAR launch asks this instance to show itself.</summary>
+    public void BringToFront()
+    {
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
+
+        Activate();
+        // Topmost toggle: reliable way to raise a WPF window over the foreground app.
+        Topmost = true;
+        Topmost = false;
+        Focus();
+    }
+
+    private void StartCoverCleanup()
+    {
+        // No library.json at all = fresh install or a file deleted by hand: nothing can
+        // be judged unused. An existing but empty library means every game was
+        // removed, and then every remaining cover really is unused (it still goes to
+        // _trash first, recoverable for 30 days).
+        if (!_library.LibraryFileExisted) return;
+
+        static bool HasEditSource(Models.CoverEditState? edit)
+            => !string.IsNullOrWhiteSpace(edit?.SourcePath) && File.Exists(edit.SourcePath);
+
+        // Snapshot on the UI thread; the file work runs in the background.
+        var owners = _library.Games
+            .Select(g => new CoverOwner(g.Id, [g.CoverPath, g.CoverEdit?.SourcePath ?? string.Empty], HasEditSource(g.CoverEdit)))
+            .Concat(_library.Developers
+                .Select(d => new CoverOwner(d.LocalId, [d.CoverPath, d.CoverEdit?.SourcePath ?? string.Empty], HasEditSource(d.CoverEdit))))
+            .ToList();
+        var coversDir = AppDataPaths.CoversDir;
+        var iconsDir = AppDataPaths.IconsDir;
+        var gameIds = _library.Games.Select(g => g.Id).ToList();
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                CoverCleanupService.Run(coversDir, owners, DateTime.UtcNow);
+                // Shortcut icons: only those of removed games (see RunOrphansOnly).
+                CoverCleanupService.RunOrphansOnly(iconsDir, gameIds, DateTime.UtcNow);
+            }
+            catch
+            {
+                // Housekeeping must never disturb the user.
+            }
+        });
+    }
+
+    /// <summary>Shows pending data-recovery notices. Returns true if there were any.</summary>
+    private bool ShowStorageRecoveryNotices()
+    {
+        var recoveries = JsonStore.DrainRecoveries(AppDataPaths.Root);
+        if (recoveries.Count == 0) return false;
+
+        var parts = recoveries.Select(r => r.Outcome == StorageRecoveryOutcome.RestoredFromBackup
+            ? (LocalizationService.IsSpanish
+                ? $"• {r.FileName} estaba dañado. Se restauró la versión anterior guardada automáticamente; puede faltar el último cambio.\n  Copia del archivo dañado:\n  {r.QuarantinedPath}"
+                : $"• {r.FileName} was damaged. The automatically saved previous version was restored; the most recent change may be missing.\n  Copy of the damaged file:\n  {r.QuarantinedPath}")
+            : (LocalizationService.IsSpanish
+                ? $"• {r.FileName} estaba dañado y no había una copia anterior válida, así que VNAR empezó sin esos datos. El archivo original no se borró:\n  {r.QuarantinedPath}"
+                : $"• {r.FileName} was damaged and no valid previous copy existed, so VNAR started without that data. The original file was not deleted:\n  {r.QuarantinedPath}"));
+
+        MessageBox.Show(this,
+            string.Join("\n\n", parts),
+            LocalizationService.Bi("VNAR - Datos recuperados", "VNAR - Data recovered"),
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        return true;
     }
 
     private bool HasValidLocaleEmulatorPath()
@@ -105,11 +199,13 @@ public partial class MainWindow : Window
         var totalPages = Math.Max(1, (int)Math.Ceiling(filtered.Count / (double)pageSize));
         _currentPage = Math.Clamp(_currentPage, 1, totalPages);
 
-        GamesItems.ItemsSource = filtered
+        var gameCards = filtered
             .Skip((_currentPage - 1) * pageSize)
             .Take(pageSize)
             .Select(g => new GameCardViewModel { Game = g })
             .ToList();
+        GamesItems.ItemsSource = gameCards;
+        StartCoverLoads(gameCards);
 
         DevelopersItems.ItemsSource = null;
         GamesScroll.Visibility = Visibility.Visible;
@@ -129,6 +225,47 @@ public partial class MainWindow : Window
         }));
     }
 
+    // Library card cover box in DIPs (card width × cover row height in MainWindow.xaml).
+    private const double CardCoverWidth = 230;
+    private const double CardCoverHeight = 300;
+    private CancellationTokenSource? _coverLoads;
+
+    /// <summary>
+    /// Fills card covers without blocking the UI: cached covers are set at once,
+    /// the rest are decoded on worker threads. A newer refresh (page change, search
+    /// keystroke) cancels loads for cards that are no longer shown.
+    /// </summary>
+    private void StartCoverLoads(IReadOnlyList<CoverCardViewModel> cards)
+    {
+        _coverLoads?.Cancel();
+        _coverLoads?.Dispose();
+        _coverLoads = new CancellationTokenSource();
+        var token = _coverLoads.Token;
+
+        foreach (var card in cards)
+        {
+            var path = card.CoverPath;
+            if (string.IsNullOrWhiteSpace(path)) continue;
+
+            var cached = CoverImageLoader.TryGetCached(path, CardCoverWidth, CardCoverHeight);
+            if (cached is not null)
+            {
+                card.CoverImage = cached;
+                continue;
+            }
+
+            _ = LoadCoverAsync(card, path, token);
+        }
+    }
+
+    private async Task LoadCoverAsync(CoverCardViewModel card, string path, CancellationToken token)
+    {
+        var image = await CoverImageLoader.LoadAsync(path, CardCoverWidth, CardCoverHeight, token);
+        // The await resumes on the UI thread; skip cards replaced by a newer refresh.
+        if (image is not null && !token.IsCancellationRequested)
+            card.CoverImage = image;
+    }
+
     private void RefreshDeveloperCards()
     {
         var q = SearchBox?.Text?.Trim() ?? string.Empty;
@@ -140,7 +277,8 @@ public partial class MainWindow : Window
 
         foreach (var pair in associatedIds)
             _library.EnsureDeveloper(pair.Key, pair.Value);
-        if (associatedIds.Count > 0) _library.SaveDevelopers();
+        // This runs on every search keystroke; only touch the disk when something changed.
+        _library.SaveDevelopersIfDirty();
 
         var cards = _library.Developers
             .Where(d => associatedIds.ContainsKey(d.VndbId))
@@ -157,7 +295,9 @@ public partial class MainWindow : Window
         var totalPages = Math.Max(1, (int)Math.Ceiling(cards.Count / (double)pageSize));
         _currentPage = Math.Clamp(_currentPage, 1, totalPages);
 
-        DevelopersItems.ItemsSource = cards.Skip((_currentPage - 1) * pageSize).Take(pageSize).ToList();
+        var pageCards = cards.Skip((_currentPage - 1) * pageSize).Take(pageSize).ToList();
+        DevelopersItems.ItemsSource = pageCards;
+        StartCoverLoads(pageCards);
         GamesItems.ItemsSource = null;
         DevelopersScroll.Visibility = Visibility.Visible;
         GamesScroll.Visibility = Visibility.Collapsed;
@@ -435,24 +575,29 @@ public partial class MainWindow : Window
             Title = LocalizationService.Bi("Añadir juegos", "Add games")
         };
         if (dialog.ShowDialog(this) != true) return;
-        foreach (var exe in dialog.FileNames) AddExecutable(exe, openEditor: dialog.FileNames.Length == 1);
+        AddExecutables(dialog.FileNames, openEditorIfSingle: true);
         RefreshLibrary();
     }
 
-    private void AddExecutable(string exe, bool openEditor = false)
+    /// <summary>
+    /// Adds the given executables in one library save. When exactly one new game was
+    /// requested and added, opens its editor (the old single-file behaviour).
+    /// </summary>
+    private void AddExecutables(IReadOnlyCollection<string> exes, bool openEditorIfSingle)
     {
-        if (!File.Exists(exe) || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) return;
-        if (_library.ContainsExe(exe)) return;
+        var entries = exes
+            .Where(exe => File.Exists(exe) && exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            .Select(exe => new GameEntry
+            {
+                Name = ScannerService.InferNameFromExe(exe),
+                ExePath = Path.GetFullPath(exe)
+            })
+            .ToList();
 
-        var game = new GameEntry
+        var added = _library.AddRange(entries);
+        if (openEditorIfSingle && exes.Count == 1 && added.Count == 1)
         {
-            Name = ScannerService.InferNameFromExe(exe),
-            ExePath = Path.GetFullPath(exe)
-        };
-        _library.Add(game);
-        if (openEditor)
-        {
-            var editor = new GameEditorWindow(_library, game) { Owner = this };
+            var editor = new GameEditorWindow(_library, added[0]) { Owner = this };
             editor.ShowDialog();
         }
     }
@@ -468,7 +613,24 @@ public partial class MainWindow : Window
 
     private void ScanAndImport(string folder)
     {
-        var candidates = ScannerService.Scan(folder).Where(c => !_library.ContainsExe(c.ExePath)).ToList();
+        // The scan runs on a worker thread inside this modal dialog, so the window
+        // keeps painting and long scans can be cancelled.
+        var progress = new ScanProgressWindow(folder, _library.BuildExeIndex()) { Owner = this };
+        progress.ShowDialog();
+
+        if (progress.Error is not null)
+        {
+            MessageBox.Show(this,
+                LocalizationService.Bi("No se pudo escanear la carpeta.\n\n", "The folder could not be scanned.\n\n") + progress.Error.Message,
+                LocalizationService.Bi("Escaneo", "Scan"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        var candidates = progress.Candidates;
+        if (candidates is null) return; // cancelled by the user
+
         if (candidates.Count == 0)
         {
             MessageBox.Show(this,
@@ -481,8 +643,8 @@ public partial class MainWindow : Window
 
         var scan = new ScanWindow(candidates) { Owner = this };
         if (scan.ShowDialog() != true) return;
-        foreach (var c in scan.SelectedCandidates)
-            _library.Add(new GameEntry { Name = c.Name, ExePath = c.ExePath });
+        // One save for the whole import instead of one per game.
+        _library.AddRange(scan.SelectedCandidates.Select(c => new GameEntry { Name = c.Name, ExePath = c.ExePath }));
         RefreshLibrary();
     }
 
@@ -579,7 +741,7 @@ public partial class MainWindow : Window
 
     private void OpenShortcutWindow(GameEntry game)
     {
-        var dialog = new ShortcutWindow(game) { Owner = this };
+        var dialog = new ShortcutWindow(game, _library) { Owner = this };
         dialog.ShowDialog();
     }
 
@@ -646,12 +808,18 @@ public partial class MainWindow : Window
     private void Window_Drop(object sender, DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
-        var paths = (string[])e.Data.GetData(DataFormats.FileDrop);
-        foreach (var path in paths)
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+        e.Handled = true;
+
+        // Finish the drag-and-drop first: work done inside Drop (dialogs, scans)
+        // keeps Explorer's drag operation frozen until it returns.
+        Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (File.Exists(path) && path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) AddExecutable(path);
-            else if (Directory.Exists(path)) ScanAndImport(path);
-        }
-        RefreshLibrary();
+            var exes = paths.Where(p => File.Exists(p) && p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (exes.Count > 0) AddExecutables(exes, openEditorIfSingle: false);
+            foreach (var folder in paths.Where(Directory.Exists))
+                ScanAndImport(folder);
+            RefreshLibrary();
+        }), System.Windows.Threading.DispatcherPriority.Background);
     }
 }

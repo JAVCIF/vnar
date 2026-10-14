@@ -19,7 +19,7 @@ public sealed class LocaleEmulatorInstallerService
     public LocaleEmulatorInstallerService()
     {
         _http = new HttpClient();
-        _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("VNAR", "0.2.0"));
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd(AppInfo.UserAgent);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
     }
 
@@ -77,9 +77,7 @@ public sealed class LocaleEmulatorInstallerService
             using (var response = await _http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
                 response.EnsureSuccessStatusCode();
-                await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-                await using var target = File.Create(tempZip);
-                await source.CopyToAsync(target, cancellationToken);
+                await DownloadGuard.CopyToNewFileLimitedAsync(response, tempZip, DownloadGuard.MaxArchiveBytes, cancellationToken);
             }
 
             progress?.Report(LocalizationService.Bi("Descomprimiendo Locale Emulator…", "Extracting Locale Emulator…"));

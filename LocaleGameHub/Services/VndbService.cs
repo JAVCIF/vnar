@@ -15,7 +15,7 @@ public sealed class VndbService
 
     static VndbService()
     {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("VNAR/0.2.3");
+        Http.DefaultRequestHeaders.UserAgent.ParseAdd(AppInfo.UserAgent);
     }
 
     public async Task<VndbResult?> GetVisualNovelAsync(string rawId, CancellationToken cancellationToken = default)
@@ -169,11 +169,10 @@ public sealed class VndbService
         catch { }
 
         var target = CoverService.BuildUniqueCoverPath(gameId, "vndb", extension);
-        using var response = await Http.GetAsync(imageUrl, cancellationToken);
+        // ResponseHeadersRead: stream to disk instead of buffering the whole body first.
+        using var response = await Http.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
-        await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await input.CopyToAsync(output, cancellationToken);
+        await DownloadGuard.CopyToNewFileLimitedAsync(response, target, DownloadGuard.MaxImageBytes, cancellationToken);
         return target;
     }
 

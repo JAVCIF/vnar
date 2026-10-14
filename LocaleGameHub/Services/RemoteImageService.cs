@@ -17,7 +17,7 @@ public static class RemoteImageService
 
     static RemoteImageService()
     {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) VNAR/1.0.0-beta.1.1");
+        Http.DefaultRequestHeaders.UserAgent.ParseAdd(AppInfo.BrowserLikeUserAgent);
         Http.DefaultRequestHeaders.Accept.ParseAdd("image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
     }
 
@@ -70,18 +70,18 @@ public static class RemoteImageService
 
         var extension = ExtensionFromContentType(contentType);
         suffix = Regex.Replace(suffix, "[^a-zA-Z0-9_-]", "_");
-        await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
 
         if (extension is ".webp" or ".avif")
         {
             // WPF/WIC support for WebP/AVIF varies by Windows installation. Decode with Skia
             // and normalize to PNG before the file enters VNAR's cover/editor pipeline.
-            return ImageCompatibilityService.ConvertStreamToPng(input, gameId, suffix + "_webp");
+            var bytes = await DownloadGuard.ReadAllLimitedAsync(response, DownloadGuard.MaxImageBytes, cancellationToken);
+            using var buffered = new MemoryStream(bytes, writable: false);
+            return ImageCompatibilityService.ConvertStreamToPng(buffered, gameId, suffix + "_webp");
         }
 
         var target = CoverService.BuildUniqueCoverPath(gameId, suffix, extension);
-        await using var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await input.CopyToAsync(output, cancellationToken);
+        await DownloadGuard.CopyToNewFileLimitedAsync(response, target, DownloadGuard.MaxImageBytes, cancellationToken);
         return target;
     }
 

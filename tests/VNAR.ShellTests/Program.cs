@@ -9,10 +9,18 @@ namespace VNAR.ShellTests;
 internal static class Program
 {
     [STAThread]
-    private static int Main()
+    private static int Main(string[] args)
     {
+        // When VNAR launches a game during the modern-shortcut test, this executable
+        // plays the part of LEProc.exe.
+        if (args.Length > 0 && args[0] == ModernShortcutTests.FakeLeProcFlag)
+            return ModernShortcutTests.RunFakeLeProc(args);
+
         var root = Path.Combine(Path.GetTempPath(), "VNAR Shell Tests " + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        // Keep every VNAR data file in the temp folder (inherited by the VNAR.exe the
+        // modern-shortcut test starts), never in the user's real library.
+        Environment.SetEnvironmentVariable(AppDataPaths.DataDirOverrideVariable, Path.Combine(root, "data"));
 
         try
         {
@@ -58,6 +66,8 @@ internal static class Program
             var replacement = ShortcutService.CreateShortcut(first, "Normal shortcut", root, icon);
             VerifyShortcut(replacement, first, icon);
             Console.WriteLine("PASS: shortcut replacement preserves target, arguments, description and icon.");
+
+            ModernShortcutTests.Run(root, icon);
             return 0;
         }
         catch (Exception ex)
@@ -67,7 +77,8 @@ internal static class Program
         }
         finally
         {
-            Directory.Delete(root, recursive: true);
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { /* a just-exited process may still hold a file; temp is cleaned by Windows */ }
         }
     }
 

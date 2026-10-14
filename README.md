@@ -7,7 +7,7 @@
 
 A lightweight Windows launcher for visual novels with Locale Emulator integration, VNDB metadata, cover editing, developer browsing, favorites, WebP support, and smart desktop shortcuts.
 
-[Español](README.es.md) · [Download Beta 1.2](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.2)
+[Español](README.es.md) · [Download Beta 1.3](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3)
 </div>
 
 ## Downloads
@@ -16,8 +16,8 @@ A lightweight Windows launcher for visual novels with Locale Emulator integratio
 
 | Package | Description | Download |
 | --- | --- | --- |
-| Installer | Self-contained installation with Start Menu integration and optional desktop shortcut | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.2/VNAR-Setup.exe) |
-| Portable | Self-contained portable build; extract and run `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.2/VNAR-Portable-win-x64.zip) |
+| Installer | Self-contained installation with Start Menu integration and optional desktop shortcut | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Setup.exe) |
+| Portable | Self-contained portable build; extract and run `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Portable-win-x64.zip) |
 
 Locale Emulator is **not bundled** with VNAR. On first launch, VNAR can use an existing `LEProc.exe` or download the official Locale Emulator release for you.
 
@@ -87,15 +87,23 @@ dotnet publish .\LocaleGameHub\LocaleGameHub.csproj -c Release -r win-x64 --self
 
 The repository also includes `build_portable.bat` and `build_small.bat` for local Windows builds.
 
-## Taskbar icons (Beta 1.2)
+## Shortcuts and Windows icons (Beta 1.3)
 
-VNAR now declares its own Windows AppUserModelID. Game shortcuts use a separate,
-stable ID per game, so opening one cannot supply its icon to the VNAR library window.
-The administrator option still only selects the Locale Emulator profile.
+The recommended **Modern** shortcut is an Internet shortcut (`.url`) that opens a
+`vnar://launch/<game-id>` link. It never targets `VNAR.exe` directly, so Windows does
+not reuse the last game's name or icon for VNAR in Task Manager. It still launches
+the same single `VNAR.exe`, avoiding a separate executable or first-run SmartScreen
+warning for every game.
 
-Existing shortcuts keep working. Recreate them in VNAR to add the new shortcut
-identity. If an old pinned VNAR icon remains cached, unpin it, open the updated
-`VNAR.exe`, and pin that running window again. No icon-cache reset is required.
+Traditional **Classic** (`.lnk`) shortcuts remain available when taskbar pinning is
+required, but Windows may associate their game icon with VNAR because they target
+the launcher executable. Existing shortcuts keep working; recreate them as Modern
+to receive the new behavior. The administrator option still only selects the Locale
+Emulator profile.
+
+Modern shortcut icons are stored in VNAR's data folder so custom icons and the
+generic VNAR icon survive moving a portable installation. If the portable folder is
+moved, VNAR refreshes its per-user `vnar://` registration on the next normal start.
 
 Windows shell regression checks:
 
@@ -105,7 +113,7 @@ dotnet run --project .\tests\VNAR.ShellTests\VNAR.ShellTests.csproj -c Release
 
 ## Project status
 
-Current public build: **Beta 1.2 (`1.0.0-beta.1.2`)**.
+Current public build: **Beta 1.3 (`1.0.0-beta.1.3`)**.
 
 Bug reports and suggestions are welcome through GitHub Issues.
 

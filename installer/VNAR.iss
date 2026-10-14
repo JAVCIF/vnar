@@ -1,5 +1,12 @@
 #define MyAppName "VNAR"
-#define MyAppVersion "1.0.0-beta.1.2"
+; The version comes from Directory.Build.props. The release workflow passes it with
+; /DMyAppVersion=...; a local ISCC run reads it from the published VNAR.exe instead.
+#ifndef MyAppVersion
+  #define MyAppVersion GetStringFileInfo(AddBackslash(SourcePath) + "..\dist\portable\VNAR.exe", "ProductVersion")
+#endif
+#if MyAppVersion == ""
+  #error Could not determine the VNAR version. Publish to dist\portable first or pass /DMyAppVersion=<version>.
+#endif
 #define MyAppPublisher "JAVCIF"
 #define MyAppExeName "VNAR.exe"
 

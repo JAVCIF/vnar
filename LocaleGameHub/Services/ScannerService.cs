@@ -11,12 +11,28 @@ public static class ScannerService
         "update.exe", "patcher", "register", "regsvr"
     ];
 
-    public static List<ScanCandidate> Scan(string root, int maxResults = 400)
+    /// <summary>Folders visited and candidate executables found so far.</summary>
+    public readonly record struct ScanProgress(int FoldersVisited, int ExecutablesFound);
+
+    /// <summary>
+    /// Scans <paramref name="root"/> for game executables. Safe to run on a worker
+    /// thread; honours <paramref name="cancellationToken"/> between folders.
+    /// </summary>
+    public static List<ScanCandidate> Scan(
+        string root,
+        int maxResults = 400,
+        IProgress<ScanProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(root)) return [];
 
         var result = new List<ScanCandidate>();
-        foreach (var exe in SafeEnumerateExecutables(root))
+        var folders = 0;
+        foreach (var exe in SafeEnumerateExecutables(root, () =>
+                 {
+                     folders++;
+                     if (folders % 20 == 0) progress?.Report(new ScanProgress(folders, result.Count));
+                 }, cancellationToken))
         {
             if (result.Count >= maxResults) break;
 
@@ -38,6 +54,7 @@ public static class ScannerService
             });
         }
 
+        progress?.Report(new ScanProgress(folders, result.Count));
         return result
             .GroupBy(x => x.ExePath, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
@@ -45,7 +62,7 @@ public static class ScannerService
             .ToList();
     }
 
-    private static IEnumerable<string> SafeEnumerateExecutables(string root)
+    private static IEnumerable<string> SafeEnumerateExecutables(string root, Action onFolder, CancellationToken cancellationToken)
     {
         var pending = new Stack<string>();
         pending.Push(root);
@@ -53,8 +70,10 @@ public static class ScannerService
 
         while (pending.Count > 0 && visited < 10000)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var dir = pending.Pop();
             visited++;
+            onFolder();
 
             string[] files;
             try { files = Directory.GetFiles(dir, "*.exe", SearchOption.TopDirectoryOnly); }

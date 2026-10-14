@@ -95,6 +95,38 @@ public static class ExecutableIconService
         }
     }
 
+    /// <summary>
+    /// Builds a choice from a .ico file picked by the user, or returns null if the
+    /// file is not a real Windows icon (a renamed PNG would show a blank icon in
+    /// Explorer even though WPF could preview it).
+    /// </summary>
+    public static ShortcutIconOption? CreateCustomIconOption(string icoPath)
+    {
+        try
+        {
+            using (var stream = new FileStream(icoPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                if (decoder is not IconBitmapDecoder || decoder.Frames.Count == 0) return null;
+            }
+
+            var preview = LoadIconFile(icoPath);
+            if (preview is null) return null;
+
+            return new ShortcutIconOption
+            {
+                DisplayName = Path.GetFileName(icoPath),
+                IconPath = icoPath,
+                Preview = preview,
+                IsCustom = true
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static ImageSource? LoadIconFile(string path)
     {
         if (!File.Exists(path)) return null;
