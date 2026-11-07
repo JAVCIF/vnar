@@ -7,7 +7,7 @@
 
 A lightweight Windows launcher for visual novels with Locale Emulator integration, VNDB metadata, cover editing, developer browsing, favorites, WebP support, and smart desktop shortcuts.
 
-[Español](README.es.md) · [Download Beta 1.3](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3)
+[Español](README.es.md) · [Download Beta 1.3.1](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3.1)
 </div>
 
 ## Downloads
@@ -16,8 +16,8 @@ A lightweight Windows launcher for visual novels with Locale Emulator integratio
 
 | Package | Description | Download |
 | --- | --- | --- |
-| Installer | Self-contained installation with Start Menu integration and optional desktop shortcut | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Setup.exe) |
-| Portable | Self-contained portable build; extract and run `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Portable-win-x64.zip) |
+| Installer | Self-contained installation with Start Menu integration and optional desktop shortcut | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.1/VNAR-Setup.exe) |
+| Portable | Self-contained portable build; extract and run `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.1/VNAR-Portable-win-x64.zip) |
 
 Locale Emulator is **not bundled** with VNAR. On first launch, VNAR can use an existing `LEProc.exe` or download the official Locale Emulator release for you.
 
@@ -113,7 +113,7 @@ dotnet run --project .\tests\VNAR.ShellTests\VNAR.ShellTests.csproj -c Release
 
 ## Project status
 
-Current public build: **Beta 1.3 (`1.0.0-beta.1.3`)**.
+Current public build: **Beta 1.3.1 (`1.0.0-beta.1.3.1`)**.
 
 Bug reports and suggestions are welcome through GitHub Issues.
 

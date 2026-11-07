@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using LocaleGameHub.Models;
 using LocaleGameHub.Services;
 
@@ -41,7 +42,6 @@ internal static class Program
             Equal(TaskbarIdentityService.LauncherAppId, ReadProcessIdentity(), "launcher after second game");
             Console.WriteLine("PASS: explicit process identities remain separate.");
 
-            // Keep fixture filenames independent of WScript.Shell ANSI code-page limitations.
             var normalLink = ShortcutService.CreateShortcut(first, "Normal shortcut", root, icon);
             var adminLink = ShortcutService.CreateShortcut(second, "Admin shortcut", root, icon);
             VerifyShortcut(normalLink, first, icon);
@@ -67,6 +67,19 @@ internal static class Program
             VerifyShortcut(replacement, first, icon);
             Console.WriteLine("PASS: shortcut replacement preserves target, arguments, description and icon.");
 
+            // Games whose .exe (and therefore the chosen icon) has Japanese characters:
+            // the link must keep the exact Unicode path, not an ANSI "???.exe" that
+            // makes Explorer fall back to VNAR.exe's icon.
+            var japaneseFolder = Path.Combine(root, "ゲーム フォルダ");
+            Directory.CreateDirectory(japaneseFolder);
+            var japaneseIcon = Path.Combine(japaneseFolder, "蒼の彼方のフォーリズム.ico");
+            File.Copy(icon, japaneseIcon);
+            var japaneseGame = new GameEntry { Name = "蒼の彼方のフォーリズム" };
+            var japaneseLink = ShortcutService.CreateShortcut(japaneseGame, japaneseGame.Name, japaneseFolder, japaneseIcon);
+            Equal(Path.Combine(japaneseFolder, "蒼の彼方のフォーリズム.lnk"), japaneseLink, "Unicode shortcut path");
+            VerifyShortcut(japaneseLink, japaneseGame, japaneseIcon);
+            Console.WriteLine("PASS: classic shortcuts keep Japanese names and icon paths intact.");
+
             ModernShortcutTests.Run(root, icon);
             return 0;
         }
@@ -86,25 +99,55 @@ internal static class Program
     {
         Equal(TaskbarIdentityService.GetGameAppId(game.Id), ReadShortcutIdentity(path), "persisted AppUserModelID");
 
-        object? shellObject = null;
-        object? linkObject = null;
+        // Read through IShellLinkW: WScript.Shell would turn non-ANSI characters into "?".
+        var link = Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("00021401-0000-0000-C000-000000000046"), true)!)!;
         try
         {
-            shellObject = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")!);
-            dynamic shell = shellObject!;
-            linkObject = shell.CreateShortcut(path);
-            dynamic link = linkObject;
-            Equal(ShortcutService.ResolveVnarExecutable().ToUpperInvariant(),
-                ((string)link.TargetPath).ToUpperInvariant(), "shortcut target");
-            Equal($"--launch {game.Id:D}", (string)link.Arguments, "shortcut arguments");
-            Equal(icon.ToUpperInvariant() + ",0", ((string)link.IconLocation).ToUpperInvariant(), "chosen icon");
-            Equal($"VNAR · {game.Name}", (string)link.Description, "shortcut description");
+            ((System.Runtime.InteropServices.ComTypes.IPersistFile)link).Load(path, 0);
+            var shellLink = (IShellLinkWReader)link;
+            var buffer = new StringBuilder(1024);
+
+            Marshal.ThrowExceptionForHR(shellLink.GetPath(buffer, buffer.Capacity, IntPtr.Zero, 0));
+            Equal(ShortcutService.ResolveVnarExecutable().ToUpperInvariant(), buffer.ToString().ToUpperInvariant(), "shortcut target");
+
+            buffer.Clear();
+            Marshal.ThrowExceptionForHR(shellLink.GetArguments(buffer, buffer.Capacity));
+            Equal($"--launch {game.Id:D}", buffer.ToString(), "shortcut arguments");
+
+            buffer.Clear();
+            Marshal.ThrowExceptionForHR(shellLink.GetIconLocation(buffer, buffer.Capacity, out var iconIndex));
+            Equal(icon.ToUpperInvariant() + ",0", buffer.ToString().ToUpperInvariant() + "," + iconIndex, "chosen icon");
+
+            buffer.Clear();
+            Marshal.ThrowExceptionForHR(shellLink.GetDescription(buffer, buffer.Capacity));
+            Equal($"VNAR · {game.Name}", buffer.ToString(), "shortcut description");
         }
         finally
         {
-            Release(linkObject);
-            Release(shellObject);
+            Release(link);
         }
+    }
+
+    // Vtable order of IShellLinkW up to GetIconLocation; only getters are used here.
+    [ComImport]
+    [Guid("000214F9-0000-0000-C000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellLinkWReader
+    {
+        [PreserveSig] int GetPath([MarshalAs(UnmanagedType.LPWStr)] StringBuilder file, int maxPath, IntPtr findData, uint flags);
+        [PreserveSig] int GetIDList(out IntPtr idList);
+        [PreserveSig] int SetIDList(IntPtr idList);
+        [PreserveSig] int GetDescription([MarshalAs(UnmanagedType.LPWStr)] StringBuilder name, int maxName);
+        [PreserveSig] int SetDescription([MarshalAs(UnmanagedType.LPWStr)] string name);
+        [PreserveSig] int GetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] StringBuilder dir, int maxPath);
+        [PreserveSig] int SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string dir);
+        [PreserveSig] int GetArguments([MarshalAs(UnmanagedType.LPWStr)] StringBuilder args, int maxPath);
+        [PreserveSig] int SetArguments([MarshalAs(UnmanagedType.LPWStr)] string args);
+        [PreserveSig] int GetHotkey(out short hotkey);
+        [PreserveSig] int SetHotkey(short hotkey);
+        [PreserveSig] int GetShowCmd(out int showCmd);
+        [PreserveSig] int SetShowCmd(int showCmd);
+        [PreserveSig] int GetIconLocation([MarshalAs(UnmanagedType.LPWStr)] StringBuilder iconPath, int maxIconPath, out int iconIndex);
     }
 
     private static string ReadShortcutIdentity(string path)
