@@ -66,7 +66,7 @@ public static class TaskbarIdentityService
     private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
 
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    private struct PropertyKey
+    internal struct PropertyKey
     {
         public Guid FormatId;
         public uint PropertyId;
@@ -75,24 +75,25 @@ public static class TaskbarIdentityService
     // PROPVARIANT's union contains a counted pointer: 16 bytes on x86,
     // 24 on x64. Include that member so the native layout is correct on both.
     [StructLayout(LayoutKind.Sequential)]
-    private struct CountedPointer
+    internal struct CountedPointer
     {
         public uint Count;
         public IntPtr Pointer;
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    private struct PropVariant
+    internal struct PropVariant
     {
         [FieldOffset(0)] public ushort ValueType;
         [FieldOffset(8)] public IntPtr StringValue;
+        [FieldOffset(8)] public short BoolValue;
         [FieldOffset(8)] public CountedPointer ArrayValue;
     }
 
     [ComImport]
     [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IPropertyStore
+    internal interface IPropertyStore
     {
         [PreserveSig] int GetCount(out uint count);
         [PreserveSig] int GetAt(uint index, out PropertyKey key);

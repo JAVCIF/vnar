@@ -665,7 +665,13 @@ public partial class MainWindow : Window
     {
         try
         {
-            _locale.Launch(game);
+            // Validate here (missing LEProc opens Settings below), then hand the launch
+            // to a separate VNAR process, like a classic shortcut: it gives the game's
+            // windows their identity so they group with a pinned shortcut, and it keeps
+            // working if this window is closed while playing.
+            var start = _locale.BuildStartInfo(game);
+            if (!TryLaunchThroughVnar(game))
+                System.Diagnostics.Process.Start(start);
             game.LastPlayedUtc = DateTime.UtcNow;
             _library.SaveGames();
         }
@@ -688,6 +694,25 @@ public partial class MainWindow : Window
                 }
                 RefreshLocaleBanner();
             }
+        }
+    }
+
+    private static bool TryLaunchThroughVnar(GameEntry game)
+    {
+        try
+        {
+            var vnarExe = ShortcutService.ResolveVnarExecutable();
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                vnarExe, $"--launch {game.Id:D} {ElevationService.FromLibraryArgument}")
+            {
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(vnarExe) ?? AppContext.BaseDirectory
+            });
+            return process is not null;
+        }
+        catch
+        {
+            return false;
         }
     }
 

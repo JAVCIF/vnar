@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.0.0-beta.1.3.2
+
+- Classic shortcuts now work with games that start through a loader (a small `.exe` that creates the real game, e.g. `main.bin`, and exits). VNAR stays in the background while the game runs and gives the game's windows the shortcut's AppUserModelID, relaunch command, name and icon, so the game groups with its pinned shortcut instead of showing a second taskbar button, and the running game can be pinned (it pins a VNAR shortcut, not the loader's `.bin`).
+- Classic launches of games that run as administrator (marked in VNAR, `requireAdministrator`/`highestAvailable` in the executable's manifest, or Windows' "Run as administrator" compatibility setting) start an elevated VNAR first, so it can set the identity on the game's elevated windows. There is still a single UAC prompt: the elevated VNAR starts Locale Emulator, which does not ask again. The elevated copy receives the data folder and the shortcut's icon as arguments, so it also works when UAC runs it as another user. Cancelling UAC cancels the launch, as before.
+- Games started from the library window (Play or double-click) go through the same path in a separate VNAR process: their windows get the game's AppUserModelID, so they group with a pinned classic shortcut instead of showing a second button, and they are marked as not pinnable, so pinning a running game can no longer pin its executable without Locale Emulator. Pinning stays a deliberate choice made with a classic shortcut. Administrator games get the same single-UAC elevation, and the launch keeps being watched if the library window is closed.
+- `VNAR.ShellTests` checks that a window owned by another process in the game folder receives that identity (pinnable for shortcut launches, not pinnable for library launches), and that windows from other folders are left alone. `VNAR.CoreTests` covers which games are treated as running as administrator.
+
 ## 1.0.0-beta.1.3.1
 
 - Fix classic (`.lnk`) shortcuts for games whose executable, folder or name has Japanese (or other non-ANSI) characters. They were written through `WScript.Shell`, which turned those characters into `?`, so the icon pointed to a file that does not exist and Windows showed VNAR's icon instead of the game's, making the shortcut look like a modern one. Classic shortcuts are now written with the Unicode Shell Link API. Shortcuts created with Beta 1.3 for those games need to be created again.

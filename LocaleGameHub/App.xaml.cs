@@ -1,6 +1,7 @@
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
+using LocaleGameHub.Models;
 using LocaleGameHub.Services;
 
 namespace LocaleGameHub;
@@ -16,6 +17,17 @@ public partial class App : Application
 
         try
         {
+            // An elevated copy started for a classic launch gets the data folder of the
+            // VNAR that started it (UAC may run it as another user). This must happen
+            // before anything reads AppDataPaths.
+            var isElevatedRelaunch = false;
+            var dataDir = ElevationService.GetArgument(e.Args, ElevationService.DataDirArgument);
+            if (!string.IsNullOrWhiteSpace(dataDir) && Directory.Exists(dataDir))
+            {
+                Environment.SetEnvironmentVariable(AppDataPaths.DataDirOverrideVariable, dataDir);
+                isElevatedRelaunch = true;
+            }
+
             var launch = ParseLaunchRequest(e.Args, out var gameId);
             var isGameLaunch = launch != LaunchRequest.None;
 
@@ -50,7 +62,37 @@ public partial class App : Application
 
             if (isGameLaunch)
             {
-                LaunchFromShortcut(preferences, gameId);
+                var game = FindGame(preferences, gameId);
+                if (launch == LaunchRequest.Classic)
+                {
+                    var fromLibrary = ElevationService.HasFlag(e.Args, ElevationService.FromLibraryArgument);
+                    var relaunchIcon = ElevationService.GetArgument(e.Args, ElevationService.RelaunchIconArgument)
+                                       ?? GameWindowIdentityService.ResolveRelaunchIcon(game);
+
+                    // A game that runs as administrator needs an elevated VNAR to set
+                    // its windows' identity. Hand the launch to an elevated copy: the
+                    // user still gets a single UAC prompt (instead of Locale Emulator's).
+                    if (!isElevatedRelaunch && !ElevationService.IsCurrentProcessElevated() &&
+                        ElevationService.GameRunsElevated(game))
+                    {
+                        var result = ElevationService.RelaunchElevated(ShortcutService.ResolveVnarExecutable(), game.Id, relaunchIcon, fromLibrary);
+                        if (result != ElevationService.RelaunchResult.Failed)
+                        {
+                            Shutdown(0); // started, or the user said no to UAC
+                            return;
+                        }
+                        // Elevation is not available: launch as before.
+                    }
+
+                    // The library window already recorded the launch.
+                    LaunchGame(preferences, game, recordLaunch: !fromLibrary);
+                    // Stay in the background while the game runs, giving its windows
+                    // the shortcut's identity (see GameWindowIdentityService).
+                    WatchGameWindows(game, relaunchIcon, preventPinning: fromLibrary);
+                    return;
+                }
+
+                LaunchGame(preferences, game);
                 Shutdown(0);
                 return;
             }
@@ -99,7 +141,7 @@ public partial class App : Application
         return LaunchRequest.None;
     }
 
-    private static void LaunchFromShortcut(LibraryService library, Guid gameId)
+    private static GameEntry FindGame(LibraryService library, Guid gameId)
     {
         var game = library.Games.FirstOrDefault(g => g.Id == gameId);
         if (game is null)
@@ -114,11 +156,48 @@ public partial class App : Application
             throw new InvalidOperationException(message);
         }
 
+        return game;
+    }
+
+    private static void LaunchGame(LibraryService library, GameEntry game, bool recordLaunch = true)
+    {
         var locale = new LocaleEmulatorService(library);
         locale.Launch(game);
+        if (!recordLaunch) return;
         // Re-reads the library under the shared lock so edits made meanwhile in the
         // library window are not overwritten by this process's startup snapshot.
         library.RecordLaunch(game.Id, DateTime.UtcNow);
+    }
+
+    private void WatchGameWindows(GameEntry game, string relaunchIcon, bool preventPinning)
+    {
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var watcher = new GameWindowIdentityService(
+                    game,
+                    ShortcutService.ResolveVnarExecutable(),
+                    relaunchIcon,
+                    preventPinning);
+                watcher.Watch();
+            }
+            catch (Exception ex)
+            {
+                // The game is already running; only the taskbar grouping is lost.
+                WriteCrashLog("GameWindowIdentity", ex);
+            }
+            finally
+            {
+                Dispatcher.BeginInvoke(new Action(() => Shutdown(0)));
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "VNAR game window identity"
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
     private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

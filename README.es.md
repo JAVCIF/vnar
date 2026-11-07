@@ -7,7 +7,7 @@
 
 Un launcher ligero para Windows enfocado en visual novels, con integración con Locale Emulator, metadatos de VNDB, edición de portadas, navegación por desarrolladores, favoritos, soporte WebP y accesos directos inteligentes.
 
-[English](README.md) · [Descargar Beta 1.3.1](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3.1)
+[English](README.md) · [Descargar Beta 1.3.2](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3.2)
 </div>
 
 ## Descargas
@@ -16,8 +16,8 @@ Un launcher ligero para Windows enfocado en visual novels, con integración con 
 
 | Paquete | Descripción | Descarga |
 | --- | --- | --- |
-| Instalador | Instalación autocontenida, acceso en el menú Inicio y acceso de escritorio opcional | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.1/VNAR-Setup.exe) |
-| Portable | Versión autocontenida; descomprime y ejecuta `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.1/VNAR-Portable-win-x64.zip) |
+| Instalador | Instalación autocontenida, acceso en el menú Inicio y acceso de escritorio opcional | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.2/VNAR-Setup.exe) |
+| Portable | Versión autocontenida; descomprime y ejecuta `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.2/VNAR-Portable-win-x64.zip) |
 
 Locale Emulator **no viene incluido** dentro de VNAR. En el primer arranque puedes seleccionar un `LEProc.exe` existente o dejar que VNAR descargue la versión oficial de Locale Emulator.
 
@@ -95,6 +95,20 @@ apuntan al ejecutable del launcher. Los accesos anteriores siguen funcionando;
 recréalos como Modernos para obtener el comportamiento nuevo. La opción de
 administrador sigue cambiando únicamente el perfil de Locale Emulator.
 
+Mientras un juego abierto desde un acceso Clásico está en marcha, VNAR se queda en
+segundo plano y le da a las ventanas del juego la identidad del acceso. Así el juego
+se agrupa con su acceso anclado, y anclar el juego abierto ancla un acceso de VNAR
+(con Locale Emulator) en vez del ejecutable del juego. Esto también cubre los juegos
+que arrancan con un pequeño lanzador que crea el juego real (por ejemplo `main.bin`)
+y se cierra. Con los juegos que se ejecutan como administrador (marcados en VNAR,
+exigidos por el propio ejecutable o configurados en las opciones de compatibilidad de
+Windows), el VNAR del acceso se eleva primero, así que sigue habiendo una sola
+ventana de UAC.
+
+Los juegos abiertos desde la biblioteca también se agrupan con su acceso Clásico
+anclado, pero no se pueden anclar desde el juego abierto: para anclar un juego, crea
+un acceso Clásico. Así nada anclado apunta al ejecutable del juego sin Locale Emulator.
+
 Los iconos de accesos modernos se guardan en la carpeta de datos de VNAR, por lo que
 los personalizados y el genérico sobreviven si mueves una instalación portable. Al
 abrir VNAR normalmente desde la ubicación nueva, se actualiza el registro por usuario
@@ -102,7 +116,7 @@ del protocolo `vnar://`.
 
 ## Estado del proyecto
 
-Versión pública actual: **Beta 1.3.1 (`1.0.0-beta.1.3.1`)**.
+Versión pública actual: **Beta 1.3.2 (`1.0.0-beta.1.3.2`)**.
 
 Puedes usar GitHub Issues para reportar errores o proponer mejoras.
 

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Tests for VNAR's non-UI logic: storage and recovery, cross-process saves, cover
-    cleanup, cover decode sizing, scanning, download limits, vnar:// links, version
+    cleanup, cover decode sizing, scanning, download limits, vnar:// links, elevation rules, version
     info and (on Windows) DPAPI. The production files are compiled in directly, so
     this runs on any OS without WPF. Run: dotnet run -c Release (exit code 0 = pass).
     All data goes to a temporary folder via VNAR_DATA_DIR; it never touches a real library.
@@ -30,6 +30,7 @@
     <Compile Include="$(AppSrc)Services\DownloadGuard.cs" Link="App\DownloadGuard.cs" />
     <Compile Include="$(AppSrc)Services\AppInfo.cs" Link="App\AppInfo.cs" />
     <Compile Include="$(AppSrc)Services\VnarUri.cs" Link="App\VnarUri.cs" />
+    <Compile Include="$(AppSrc)Services\ElevationRules.cs" Link="App\ElevationRules.cs" />
     <Compile Include="$(AppSrc)Services\IconStore.cs" Link="App\IconStore.cs" />
     <Compile Include="$(AppSrc)Models\GameEntry.cs" Link="App\GameEntry.cs" />
     <Compile Include="$(AppSrc)Models\DeveloperEntry.cs" Link="App\DeveloperEntry.cs" />
