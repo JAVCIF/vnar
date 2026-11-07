@@ -84,7 +84,8 @@ public static class ShortcutService
         [PreserveSig] int InvokeCommand(IntPtr commandInfo);
     }
 
-    // Full vtable order of IShellLinkW; only SetIconLocation is called.
+    // Full vtable order of IShellLinkW. Used for classic .lnk shortcuts and for the
+    // icon of modern .url shortcuts (the Internet Shortcut object implements it too).
     [ComImport]
     [Guid("000214F9-0000-0000-C000-000000000046")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -132,42 +133,43 @@ public static class ShortcutService
 
         var shortcutPath = Path.Combine(destinationFolder, safeName + ".lnk");
         var target = ResolveVnarExecutable();
-        var shellType = Type.GetTypeFromProgID("WScript.Shell")
-            ?? throw new InvalidOperationException(LocalizationService.Bi("Windows Script Host no está disponible para crear el acceso directo.", "Windows Script Host is not available to create the shortcut."));
 
-        object? shellObject = null;
-        object? shortcutObject = null;
+        // Use the Shell Link object directly instead of WScript.Shell: WshShortcut
+        // converts every string to the ANSI code page, so a game .exe (or a name or
+        // folder) with Japanese characters ended up as "???.exe". The icon location
+        // then pointed nowhere and Explorer fell back to VNAR.exe's own icon, which
+        // made the classic shortcut look like a modern one.
+        var linkType = Type.GetTypeFromCLSID(new Guid("00021401-0000-0000-C000-000000000046"), true)!;
+        var link = Activator.CreateInstance(linkType)
+            ?? throw new InvalidOperationException(LocalizationService.Bi(
+                "No se pudo iniciar el creador de accesos directos de Windows.", "Could not start the Windows shortcut creator."));
         try
         {
-            shellObject = Activator.CreateInstance(shellType)
-                ?? throw new InvalidOperationException(LocalizationService.Bi("No se pudo iniciar el creador de accesos directos de Windows.", "Could not start the Windows shortcut creator."));
-
-            dynamic shell = shellObject;
-            dynamic shortcut = shell.CreateShortcut(shortcutPath);
-            shortcutObject = shortcut;
-
-            shortcut.TargetPath = target;
-            shortcut.Arguments = $"--launch {game.Id:D}";
-            shortcut.WorkingDirectory = AppContext.BaseDirectory;
-            shortcut.Description = $"VNAR · {game.Name}";
-            shortcut.IconLocation = BuildIconLocation(iconPath);
-            shortcut.Save();
+            var shellLink = (IShellLinkW)link;
+            Marshal.ThrowExceptionForHR(shellLink.SetPath(target));
+            Marshal.ThrowExceptionForHR(shellLink.SetArguments($"--launch {game.Id:D}"));
+            Marshal.ThrowExceptionForHR(shellLink.SetWorkingDirectory(AppContext.BaseDirectory));
+            Marshal.ThrowExceptionForHR(shellLink.SetDescription(BuildDescription(game.Name)));
+            Marshal.ThrowExceptionForHR(shellLink.SetIconLocation(ResolveIconPath(iconPath), 0));
+            ((System.Runtime.InteropServices.ComTypes.IPersistFile)link).Save(shortcutPath, true);
         }
         finally
         {
-            ReleaseCom(shortcutObject);
-            ReleaseCom(shellObject);
+            ReleaseCom(link);
         }
 
         TaskbarIdentityService.SetShortcutIdentity(shortcutPath, game.Id);
         return shortcutPath;
     }
 
-    private static string BuildIconLocation(string iconPath)
+    private static string ResolveIconPath(string iconPath)
+        => string.IsNullOrWhiteSpace(iconPath) || !File.Exists(iconPath) ? GetGenericIconPath() : iconPath;
+
+    // IShellLink limits the comment (INFOTIPSIZE) to 1024 characters.
+    private static string BuildDescription(string gameName)
     {
-        if (string.IsNullOrWhiteSpace(iconPath) || !File.Exists(iconPath))
-            iconPath = GetGenericIconPath();
-        return iconPath + ",0";
+        var description = $"VNAR · {gameName}";
+        return description.Length <= 1023 ? description : description[..1023];
     }
 
     public static string ResolveVnarExecutable()

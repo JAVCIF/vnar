@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.0.0-beta.1.3.1
+
+- Fix classic (`.lnk`) shortcuts for games whose executable, folder or name has Japanese (or other non-ANSI) characters. They were written through `WScript.Shell`, which turned those characters into `?`, so the icon pointed to a file that does not exist and Windows showed VNAR's icon instead of the game's, making the shortcut look like a modern one. Classic shortcuts are now written with the Unicode Shell Link API. Shortcuts created with Beta 1.3 for those games need to be created again.
+- `VNAR.ShellTests` reads shortcuts back through the Unicode Shell Link API and covers a game with Japanese name, folder and icon path.
+
 ## 1.0.0-beta.1.3
 
 - Data files (`library.json`, `developers.json`, `settings.json`) are written atomically, keeping the previous version as `.bak`.

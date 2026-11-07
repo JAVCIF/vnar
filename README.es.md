@@ -7,7 +7,7 @@
 
 Un launcher ligero para Windows enfocado en visual novels, con integración con Locale Emulator, metadatos de VNDB, edición de portadas, navegación por desarrolladores, favoritos, soporte WebP y accesos directos inteligentes.
 
-[English](README.md) · [Descargar Beta 1.3](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3)
+[English](README.md) · [Descargar Beta 1.3.1](https://github.com/JAVCIF/vnar/releases/tag/v1.0.0-beta.1.3.1)
 </div>
 
 ## Descargas
@@ -16,8 +16,8 @@ Un launcher ligero para Windows enfocado en visual novels, con integración con 
 
 | Paquete | Descripción | Descarga |
 | --- | --- | --- |
-| Instalador | Instalación autocontenida, acceso en el menú Inicio y acceso de escritorio opcional | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Setup.exe) |
-| Portable | Versión autocontenida; descomprime y ejecuta `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3/VNAR-Portable-win-x64.zip) |
+| Instalador | Instalación autocontenida, acceso en el menú Inicio y acceso de escritorio opcional | [VNAR-Setup.exe](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.1/VNAR-Setup.exe) |
+| Portable | Versión autocontenida; descomprime y ejecuta `VNAR.exe` | [VNAR-Portable-win-x64.zip](https://github.com/JAVCIF/vnar/releases/download/v1.0.0-beta.1.3.1/VNAR-Portable-win-x64.zip) |
 
 Locale Emulator **no viene incluido** dentro de VNAR. En el primer arranque puedes seleccionar un `LEProc.exe` existente o dejar que VNAR descargue la versión oficial de Locale Emulator.
 
@@ -102,7 +102,7 @@ del protocolo `vnar://`.
 
 ## Estado del proyecto
 
-Versión pública actual: **Beta 1.3 (`1.0.0-beta.1.3`)**.
+Versión pública actual: **Beta 1.3.1 (`1.0.0-beta.1.3.1`)**.
 
 Puedes usar GitHub Issues para reportar errores o proponer mejoras.
 
