@@ -73,7 +73,14 @@ public sealed class LocaleEmulatorService
         _library.SaveSettings();
     }
 
-    public void Launch(GameEntry game)
+    public void Launch(GameEntry game) => Process.Start(BuildStartInfo(game));
+
+    /// <summary>
+    /// Checks everything a launch needs (game exe, LEProc, profile) and returns how to
+    /// start it. The library window calls this first so setup errors still show there
+    /// even though the launch itself runs in a separate VNAR process.
+    /// </summary>
+    public ProcessStartInfo BuildStartInfo(GameEntry game)
     {
         if (!File.Exists(game.ExePath))
             throw new FileNotFoundException(LocalizationService.Bi("No se encontró el ejecutable del juego.", "The game executable was not found."), game.ExePath);
@@ -104,15 +111,13 @@ public sealed class LocaleEmulatorService
         if (!string.IsNullOrWhiteSpace(game.Arguments))
             args += " " + game.Arguments.Trim();
 
-        var psi = new ProcessStartInfo
+        return new ProcessStartInfo
         {
             FileName = leProc,
             Arguments = args,
             WorkingDirectory = Path.GetDirectoryName(game.ExePath) ?? Environment.CurrentDirectory,
             UseShellExecute = true
         };
-
-        Process.Start(psi);
     }
 
     private static string Quote(string value) => $"\"{value.Replace("\"", "\\\"")}\"";

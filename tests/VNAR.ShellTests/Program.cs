@@ -16,6 +16,8 @@ internal static class Program
         // plays the part of LEProc.exe.
         if (args.Length > 0 && args[0] == ModernShortcutTests.FakeLeProcFlag)
             return ModernShortcutTests.RunFakeLeProc(args);
+        if (args.Length > 0 && args[0] == GameWindowIdentityTests.FakeGameWindowFlag)
+            return GameWindowIdentityTests.RunFakeGameWindow(args);
 
         var root = Path.Combine(Path.GetTempPath(), "VNAR Shell Tests " + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -81,6 +83,7 @@ internal static class Program
             Console.WriteLine("PASS: classic shortcuts keep Japanese names and icon paths intact.");
 
             ModernShortcutTests.Run(root, icon);
+            GameWindowIdentityTests.Run(root, icon);
             return 0;
         }
         catch (Exception ex)

@@ -44,6 +44,7 @@ internal static class Program
             Section("Scanner: results, progress and cancellation", Scanner);
             await SectionAsync("Downloads: size limits and no partial files", Downloads);
             Section("Links: vnar:// parsing", VnarLinks);
+            Section("Elevation: which games run as administrator", ElevationDecisions);
             Section("Version: single source in Directory.Build.props", Version);
             if (OperatingSystem.IsWindows())
                 Section("DPAPI: real Windows encryption round trip", Dpapi);
@@ -487,6 +488,28 @@ internal static class Program
     }
 
     // ------------------------------------------------------------ links/version
+
+    private static void ElevationDecisions()
+    {
+        Check(ElevationRules.ManifestLevel("<requestedExecutionLevel level=\"requireAdministrator\" uiAccess=\"false\"/>") == ElevationRules.RequireAdministrator,
+            "manifest requireAdministrator");
+        Check(ElevationRules.ManifestLevel("<requestedExecutionLevel uiAccess='false' level='HIGHESTAVAILABLE' />") == ElevationRules.HighestAvailable,
+            "manifest highestAvailable (any attribute order and case)");
+        Check(ElevationRules.ManifestLevel("<requestedExecutionLevel level=\"asInvoker\"/>") == ElevationRules.AsInvoker, "manifest asInvoker");
+        Check(ElevationRules.ManifestLevel(null) is null && ElevationRules.ManifestLevel("<assembly/>") is null, "no manifest or no level");
+
+        Check(ElevationRules.CompatibilityLevel("~ RUNASADMIN HIGHDPIAWARE") == ElevationRules.RequireAdministrator, "compatibility RUNASADMIN");
+        Check(ElevationRules.CompatibilityLevel("~ runashighest") == ElevationRules.HighestAvailable, "compatibility RUNASHIGHEST");
+        Check(ElevationRules.CompatibilityLevel("~ WIN7RTM") is null && ElevationRules.CompatibilityLevel(null) is null, "other compatibility flags");
+
+        Check(ElevationRules.GameRunsElevated(true, null, null, false), "marked as administrator in VNAR");
+        Check(!ElevationRules.GameRunsElevated(false, ElevationRules.AsInvoker, null, true), "normal game");
+        Check(ElevationRules.GameRunsElevated(false, ElevationRules.RequireAdministrator, null, false), "exe requires administrator");
+        Check(ElevationRules.GameRunsElevated(false, null, ElevationRules.RequireAdministrator, false), "\"run as administrator\" compatibility setting");
+        Check(ElevationRules.GameRunsElevated(false, ElevationRules.HighestAvailable, null, true) &&
+              !ElevationRules.GameRunsElevated(false, ElevationRules.HighestAvailable, null, false),
+            "highestAvailable elevates only for administrators");
+    }
 
     private static void VnarLinks()
     {
